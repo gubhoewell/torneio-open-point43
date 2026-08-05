@@ -267,7 +267,9 @@
   <div class="modal-box">
     <div class="modal-titulo"><span id="modalCategoriaTitulo">Nova categoria</span><button class="modal-fechar" onclick="fecharModal('modalCategoria')">✕</button></div>
     <div class="field-group"><label>Nome da categoria</label><input id="fcNome" placeholder="Ex: Dupla Mista Iniciante"></div>
-    <div class="field-group"><label>Valor da inscrição por dupla (R$)</label><input id="fcValor" type="number" min="0" step="0.01" placeholder="0,00"></div>
+    <div class="field-group"><label>Premiação campeão (opcional)</label><input id="fcPremioCampeao" placeholder="Ex: R$ 600,00"></div>
+    <div class="field-group"><label>Premiação vice (opcional)</label><input id="fcPremioVice" placeholder="Ex: R$ 200,00 ou Voucher R$200 BOUSSOLÉ"></div>
+    <div class="sub-secao">O valor da inscrição não é mais por categoria — é por jogador(a), calculado automaticamente (1ª/2ª inscrição). Ajuste os valores em "Preços de Inscrição" logo acima da lista de categorias.</div>
     <div class="modal-acoes"><button class="btn-outline" onclick="fecharModal('modalCategoria')">Cancelar</button><button class="btn" onclick="salvarCategoria()">Salvar</button></div>
   </div>
 </div>
@@ -343,7 +345,7 @@ const MODO_PUBLICO = new URLSearchParams(location.search).get('inscrever') === '
 const S = {
   usuarioAtual: null,
   usuarios: {}, categorias: {}, tiers: {}, inscricoes: {}, patrocinios: {}, tarefas: {}, inscricoesPublicas: {},
-  config: { comissaoPercentual: 10 },
+  config: { comissaoPercentual: 10, precoPrimeiraInscricao: 75, precoSegundaInscricao: 35, pixCnpj: '55494064000188' },
   tabAtiva: 'venda',
   tipoVenda: 'inscricao',
   pinBuffer: '', pinTargetUid: null,
@@ -361,6 +363,38 @@ function abrirModal(id){ document.getElementById(id).classList.add('show'); }
 function fecharModal(id){ document.getElementById(id).classList.remove('show'); S.editando=null; }
 function listaAtivos(obj){ return Object.entries(obj||{}).filter(([id,v])=>v.ativo!==false).map(([id,v])=>({id,...v})); }
 function listaOrdenada(obj){ return listaAtivos(obj).sort((a,b)=>(a.ordem||0)-(b.ordem||0)); }
+function formatCnpj(v){
+  const d = String(v||'').replace(/\D/g,'');
+  if(d.length!==14) return v||'—';
+  return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+}
+
+/* ═══════════════════════ PREÇO POR JOGADOR (1ª/2ª inscrição) ═══════════════════════
+   Cada jogador(a) paga R$ preçoPrimeiraInscricao na 1ª categoria em que se inscreve
+   e R$ precoSegundaInscricao na 2ª — máximo 2 categorias por pessoa. Preço não é mais
+   por categoria: é calculado contando, pelo nome (normalizado), em quantas categorias
+   ativas (status != cancelado) esse jogador já está inscrito em `inscricoes`.
+   ═══════════════════════════════════════════════════════════════════════════════ */
+function normalizarNome(nome){ return String(nome||'').trim().toLowerCase().replace(/\s+/g,' '); }
+function categoriasAtivasDoJogador(nome, fonte){
+  const alvo = normalizarNome(nome);
+  const cats = new Set();
+  if(!alvo) return cats;
+  Object.values(fonte || S.inscricoes || {}).forEach(i=>{
+    if(i.status==='cancelado') return;
+    if(normalizarNome(i.jogador1)===alvo || normalizarNome(i.jogador2)===alvo) cats.add(i.categoriaId);
+  });
+  return cats;
+}
+// Retorna {valor, ordem:1|2} ou null se o jogador já estiver nessa categoria ou já tiver atingido o limite de 2.
+function precoProximaInscricao(nome, categoriaId, fonte){
+  const cats = categoriasAtivasDoJogador(nome, fonte);
+  if(cats.has(categoriaId)) return null;
+  if(cats.size >= 2) return null;
+  const ordem = cats.size + 1;
+  const valor = ordem===1 ? Number(S.config.precoPrimeiraInscricao ?? 75) : Number(S.config.precoSegundaInscricao ?? 35);
+  return {valor, ordem};
+}
 
 /* ═══════════════════════ LISTENERS FIREBASE ═══════════════════════ */
 function initListeners(){
@@ -369,7 +403,7 @@ function initListeners(){
   REF.usuarios.on('value', s=>{ S.usuarios = s.val()||{}; if(!MODO_PUBLICO){ renderSelecao(); if(S.usuarioAtual) renderConteudoSeAtivo(); } });
   REF.categorias.on('value', s=>{ S.categorias = s.val()||{}; renderConteudoSeAtivo(); if(MODO_PUBLICO) renderTelaPublica(); });
   REF.tiers.on('value', s=>{ S.tiers = s.val()||{}; renderConteudoSeAtivo(); });
-  REF.config.on('value', s=>{ S.config = Object.assign({comissaoPercentual:10}, s.val()||{}); renderConteudoSeAtivo(); });
+  REF.config.on('value', s=>{ S.config = Object.assign({comissaoPercentual:10, precoPrimeiraInscricao:75, precoSegundaInscricao:35, pixCnpj:'55494064000188'}, s.val()||{}); renderConteudoSeAtivo(); if(MODO_PUBLICO) renderTelaPublica(); });
   REF.inscricoes.on('value', s=>{ S.inscricoes = s.val()||{}; renderConteudoSeAtivo(); });
   REF.patrocinios.on('value', s=>{ S.patrocinios = s.val()||{}; renderConteudoSeAtivo(); });
   REF.tarefas.on('value', s=>{ S.tarefas = s.val()||{}; renderConteudoSeAtivo(); });
@@ -387,23 +421,53 @@ function renderTelaPublica(){
     <div class="form-card">
       ${cats.length===0 ? `<div class="vazio">Inscrições ainda não abertas — volta aqui em breve!</div>` : `
       <div class="field-group"><label>Categoria desejada</label>
-        <select id="pubCategoria">
-          ${cats.map(cat=>`<option value="${cat.id}">${esc(cat.nome)} — ${fmt(cat.valor)}</option>`).join('')}
+        <select id="pubCategoria" onchange="atualizarPreviewPublica()">
+          ${cats.map(cat=>`<option value="${cat.id}">${esc(cat.nome)}</option>`).join('')}
         </select>
       </div>
+      <div class="sub-secao" id="pubPremio" style="margin-top:-8px"></div>
       <div class="field-row">
-        <div class="field-group"><label>Jogador(a) 1 — nome</label><input id="pubJogador1" placeholder="Nome completo"></div>
+        <div class="field-group"><label>Jogador(a) 1 — nome</label><input id="pubJogador1" placeholder="Nome completo" oninput="atualizarPreviewPublica()"></div>
         <div class="field-group"><label>WhatsApp Jogador(a) 1</label><input id="pubWhats1" placeholder="(43) 9....." inputmode="tel"></div>
       </div>
       <div class="field-row">
-        <div class="field-group"><label>Jogador(a) 2 — nome</label><input id="pubJogador2" placeholder="Nome completo"></div>
+        <div class="field-group"><label>Jogador(a) 2 — nome</label><input id="pubJogador2" placeholder="Nome completo" oninput="atualizarPreviewPublica()"></div>
         <div class="field-group"><label>WhatsApp Jogador(a) 2</label><input id="pubWhats2" placeholder="(43) 9....." inputmode="tel"></div>
       </div>
+      <div class="valor-preview" id="pubPreview">Preencha os nomes pra ver o valor da inscrição</div>
       <div class="sub-secao" style="margin-top:-4px">Sua inscrição fica em análise até nossa equipe confirmar — você recebe retorno pelo WhatsApp.</div>
       <button class="btn" style="width:100%;justify-content:center;margin-top:6px" onclick="salvarInscricaoPublica()">✅ Enviar inscrição</button>
       `}
     </div>
   `;
+  atualizarPreviewPublica();
+}
+function atualizarPreviewPublica(){
+  const catSel = document.getElementById('pubCategoria');
+  if(!catSel) return;
+  const catId = catSel.value;
+  const cat = S.categorias[catId];
+  const premioEl = document.getElementById('pubPremio');
+  if(premioEl){
+    const partes = [];
+    if(cat?.premioCampeao) partes.push('🥇 Campeão: '+cat.premioCampeao);
+    if(cat?.premioVice) partes.push('🥈 Vice: '+cat.premioVice);
+    premioEl.textContent = partes.length ? partes.join(' · ')+' · + troféu pros finalistas' : '';
+  }
+  const j1 = document.getElementById('pubJogador1')?.value.trim();
+  const j2 = document.getElementById('pubJogador2')?.value.trim();
+  const prev = document.getElementById('pubPreview');
+  if(!prev) return;
+  if(!j1 && !j2){ prev.textContent = 'Preencha os nomes pra ver o valor da inscrição'; return; }
+  let total = 0, erro = null;
+  const linhas = [j1,j2].map((nome,idx)=>{
+    if(!nome) return `Jogador(a) ${idx+1}: —`;
+    const r = precoProximaInscricao(nome, catId);
+    if(!r){ erro = `⚠️ ${esc(nome)} já está inscrito(a) nessa categoria ou já atingiu o limite de 2 categorias.`; return ''; }
+    total += r.valor;
+    return `${esc(nome)}: ${r.ordem}ª inscrição — ${fmt(r.valor)}`;
+  });
+  prev.innerHTML = erro || `${linhas.filter(Boolean).join(' · ')}<br><b>Total: ${fmt(total)}</b>`;
 }
 function salvarInscricaoPublica(){
   const catId = document.getElementById('pubCategoria').value;
@@ -415,8 +479,14 @@ function salvarInscricaoPublica(){
   if(!cat) return toast('Selecione uma categoria');
   if(!j1 || !j2) return toast('Preencha os dois nomes da dupla');
   if(!w1 || !w2) return toast('WhatsApp dos dois jogadores é obrigatório');
+  const p1 = precoProximaInscricao(j1, catId);
+  if(!p1) return toast(`${j1} já está inscrito(a) nessa categoria ou já atingiu o limite de 2 categorias.`);
+  const p2 = precoProximaInscricao(j2, catId);
+  if(!p2) return toast(`${j2} já está inscrito(a) nessa categoria ou já atingiu o limite de 2 categorias.`);
+  const valorTotal = p1.valor + p2.valor;
   REF.inscricoesPublicas.push({
-    categoriaId: catId, categoriaNome: cat.nome, valor: Number(cat.valor)||0,
+    categoriaId: catId, categoriaNome: cat.nome, valor: valorTotal,
+    valorJogador1: p1.valor, valorJogador2: p2.valor,
     jogador1: j1, whatsapp1: w1, jogador2: j2, whatsapp2: w2,
     criadoEm: Date.now(), status: 'aguardando'
   }).then(()=>{
@@ -425,7 +495,13 @@ function salvarInscricaoPublica(){
       <div class="publica-sucesso">
         <div class="grande">🎾✅</div>
         <div style="font-weight:800;font-size:17px;margin-bottom:6px">Inscrição recebida!</div>
-        <div style="color:var(--muted)">A dupla ${esc(j1)} & ${esc(j2)} está em análise na categoria ${esc(cat.nome)}. Nossa equipe confirma pelo WhatsApp em breve.</div>
+        <div style="color:var(--muted);margin-bottom:14px">A dupla ${esc(j1)} & ${esc(j2)} está em análise na categoria ${esc(cat.nome)}.</div>
+        <div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:left">
+          <div style="font-weight:700;margin-bottom:6px">💰 Pagamento — PIX</div>
+          <div style="font-size:14px;color:var(--muted)">Valor: <b style="color:var(--gold)">${fmt(valorTotal)}</b></div>
+          <div style="font-size:14px;color:var(--muted)">Chave PIX (CNPJ): <b>${formatCnpj(S.config.pixCnpj)}</b></div>
+          <div style="font-size:13px;color:var(--muted2);margin-top:8px">Pague e envie o comprovante pro WhatsApp da arena — sua vaga é confirmada assim que validarmos o pagamento.</div>
+        </div>
       </div>`;
   }).catch(()=>toast('Erro ao enviar — tenta de novo em instantes.'));
 }
@@ -578,18 +654,19 @@ function renderLancarVenda(c){
         ${cats.length===0 ? `<div class="vazio">Nenhuma categoria cadastrada ainda. Peça pro admin cadastrar em Configurações.</div>` : `
         <div class="field-group"><label>Categoria</label>
           <select id="vCategoria" onchange="atualizarPreviewVenda()">
-            ${cats.map(cat=>`<option value="${cat.id}">${esc(cat.nome)} — ${fmt(cat.valor)}</option>`).join('')}
+            ${cats.map(cat=>`<option value="${cat.id}">${esc(cat.nome)}</option>`).join('')}
           </select>
         </div>
+        <div class="sub-secao" id="vPremio" style="margin-top:-8px"></div>
         <div class="field-row">
-          <div class="field-group"><label>Jogador(a) 1</label><input id="vJogador1" placeholder="Nome completo"></div>
+          <div class="field-group"><label>Jogador(a) 1</label><input id="vJogador1" placeholder="Nome completo" oninput="atualizarPreviewVenda()"></div>
           <div class="field-group"><label>WhatsApp Jogador(a) 1</label><input id="vWhats1" placeholder="(43) 9....." inputmode="tel"></div>
         </div>
         <div class="field-row">
-          <div class="field-group"><label>Jogador(a) 2</label><input id="vJogador2" placeholder="Nome completo"></div>
+          <div class="field-group"><label>Jogador(a) 2</label><input id="vJogador2" placeholder="Nome completo" oninput="atualizarPreviewVenda()"></div>
           <div class="field-group"><label>WhatsApp Jogador(a) 2</label><input id="vWhats2" placeholder="(43) 9....." inputmode="tel"></div>
         </div>
-        <div class="valor-preview" id="vPreview">Valor da inscrição: ${cats[0]?fmt(cats[0].valor):'—'}</div>
+        <div class="valor-preview" id="vPreview">Preencha os nomes pra ver o valor da inscrição</div>
         <button class="btn" onclick="salvarInscricao()">✅ Lançar Inscrição</button>
         `}
       ` : `
@@ -607,13 +684,34 @@ function renderLancarVenda(c){
       `}
     </div>
   `;
+  if(S.tipoVenda==='inscricao') atualizarPreviewVenda();
 }
 function setTipoVenda(t){ S.tipoVenda=t; renderConteudo(); }
 function atualizarPreviewVenda(){
   const prev = document.getElementById('vPreview');
+  if(!prev) return;
   if(S.tipoVenda==='inscricao'){
-    const cat = S.categorias[document.getElementById('vCategoria').value];
-    prev.textContent = 'Valor da inscrição: '+(cat?fmt(cat.valor):'—');
+    const catId = document.getElementById('vCategoria').value;
+    const cat = S.categorias[catId];
+    const premioEl = document.getElementById('vPremio');
+    if(premioEl){
+      const partes = [];
+      if(cat?.premioCampeao) partes.push('🥇 '+cat.premioCampeao);
+      if(cat?.premioVice) partes.push('🥈 '+cat.premioVice);
+      premioEl.textContent = partes.join(' · ');
+    }
+    const j1 = document.getElementById('vJogador1')?.value.trim();
+    const j2 = document.getElementById('vJogador2')?.value.trim();
+    if(!j1 && !j2){ prev.textContent = 'Preencha os nomes pra ver o valor da inscrição'; return; }
+    let total = 0, erro = null;
+    const linhas = [j1,j2].map((nome,idx)=>{
+      if(!nome) return `Jogador(a) ${idx+1}: —`;
+      const r = precoProximaInscricao(nome, catId);
+      if(!r){ erro = `⚠️ ${esc(nome)} já está inscrito(a) nessa categoria ou já atingiu o limite de 2 categorias.`; return ''; }
+      total += r.valor;
+      return `${esc(nome)}: ${r.ordem}ª inscrição — ${fmt(r.valor)}`;
+    });
+    prev.innerHTML = erro || `${linhas.filter(Boolean).join(' · ')}<br><b>Total: ${fmt(total)}</b>`;
   }else{
     const t = S.tiers[document.getElementById('vTier').value];
     prev.textContent = 'Valor da cota: '+(t?fmt(t.valor):'—');
@@ -629,9 +727,15 @@ function salvarInscricao(){
   if(!cat) return toast('Selecione uma categoria');
   if(!j1 || !j2) return toast('Preencha os dois nomes da dupla');
   if(!w1 || !w2) return toast('WhatsApp dos dois jogadores é obrigatório');
+  const p1 = precoProximaInscricao(j1, catId);
+  if(!p1) return toast(`${j1} já está inscrito(a) nessa categoria ou já atingiu o limite de 2 categorias.`);
+  const p2 = precoProximaInscricao(j2, catId);
+  if(!p2) return toast(`${j2} já está inscrito(a) nessa categoria ou já atingiu o limite de 2 categorias.`);
+  const valorTotal = p1.valor + p2.valor;
   const u = usuarioAtualObj();
   REF.inscricoes.push({
-    categoriaId: catId, categoriaNome: cat.nome, valor: Number(cat.valor)||0,
+    categoriaId: catId, categoriaNome: cat.nome, valor: valorTotal,
+    valorJogador1: p1.valor, valorJogador2: p2.valor,
     jogador1: j1, whatsapp1: w1, jogador2: j2, whatsapp2: w2,
     vendedorId: S.usuarioAtual, vendedorNome: u.nome,
     criadoEm: Date.now(), status: 'pendente'
@@ -893,9 +997,17 @@ function aprovarInscricaoPublica(id){
   const p = S.inscricoesPublicas[id];
   if(!p) return;
   const u = usuarioAtualObj();
+  // Recalcula o preço na hora da aprovação (autoridade final) — pode ter mudado desde o pedido
+  // se o(a) jogador(a) já foi aprovado(a) noutra categoria nesse meio-tempo.
+  const p1 = precoProximaInscricao(p.jogador1, p.categoriaId);
+  if(!p1) return toast(`${p.jogador1} já está inscrito(a) nessa categoria ou já atingiu o limite de 2 categorias — rejeite este pedido.`);
+  const p2 = precoProximaInscricao(p.jogador2, p.categoriaId);
+  if(!p2) return toast(`${p.jogador2} já está inscrito(a) nessa categoria ou já atingiu o limite de 2 categorias — rejeite este pedido.`);
+  const valorTotal = p1.valor + p2.valor;
   // cria a inscrição de verdade, sem vendedor (veio direto do site) — segue o fluxo normal de pagamento pendente
   REF.inscricoes.push({
-    categoriaId: p.categoriaId, categoriaNome: p.categoriaNome, valor: Number(p.valor)||0,
+    categoriaId: p.categoriaId, categoriaNome: p.categoriaNome, valor: valorTotal,
+    valorJogador1: p1.valor, valorJogador2: p2.valor,
     jogador1: p.jogador1, whatsapp1: p.whatsapp1, jogador2: p.jogador2, whatsapp2: p.whatsapp2,
     vendedorId: null, vendedorNome: 'Inscrição pública (site)',
     criadoEm: Date.now(), status: 'pendente', origemPublica: true
@@ -999,24 +1111,41 @@ function renderConfiguracoes(c){
     <div class="form-card" style="border-color:var(--gold)">
       <div style="font-weight:700;margin-bottom:6px">🌱 Popular dados iniciais reais do Torneio OPEN</div>
       <div class="sub-secao" style="margin-bottom:12px">
-        Aplica de uma vez: time (professores + comercial, cada um com PIN), tiers de patrocínio (Master/Ouro/Prata/Bronze — valores reais do mídia kit) e o checklist já andado no Trello.
-        <b>Categorias do torneio entram com valor R$ 0,00</b> — ainda faltam os preços de inscrição por categoria, ajuste depois em "Categorias do torneio" abaixo.
-        Pode rodar mais de uma vez sem duplicar (atualiza os mesmos registros).
+        Aplica de uma vez: time (professores + comercial, cada um com PIN), tiers de patrocínio (Master/Ouro/Prata/Bronze), checklist (itens reais do Trello), preços de inscrição por jogador(a) (R$75 1ª / R$35 2ª), chave PIX e a premiação de cada categoria.
+        Não duplica se rodar de novo (mesmos registros) — mas <b>sobrescreve esses campos específicos</b> com os valores padrão daqui, então evite rodar de novo depois de já ter editado premiação/preços manualmente em Configurações. Vendas e tarefas do checklist não são afetadas.
       </div>
       <button class="btn" onclick="seedDadosIniciais()">🌱 Aplicar dados iniciais</button>
     </div>
 
-    <div class="field-group" style="max-width:280px;margin-bottom:1.5rem">
-      <label>Comissão global (%)</label>
-      <input type="number" id="cfgComissao" value="${S.config.comissaoPercentual}" min="0" max="100" step="0.5" onchange="salvarComissaoGlobal()">
+    <div class="field-row" style="max-width:600px;margin-bottom:1.5rem">
+      <div class="field-group">
+        <label>Comissão global (%)</label>
+        <input type="number" id="cfgComissao" value="${S.config.comissaoPercentual}" min="0" max="100" step="0.5" onchange="salvarComissaoGlobal()">
+      </div>
+      <div class="field-group">
+        <label>Chave PIX (CNPJ) — mostrada no link público</label>
+        <input id="cfgPixCnpj" value="${esc(S.config.pixCnpj||'')}" placeholder="00000000000000" onchange="salvarPixCnpj()">
+      </div>
+    </div>
+
+    <h3 style="font-size:15px;margin-bottom:10px;color:var(--muted)">Preços de inscrição (por jogador)</h3>
+    <div class="sub-secao">Cada jogador(a) paga o valor da 1ª inscrição na sua 1ª categoria e o valor da 2ª na 2ª — máximo 2 categorias por pessoa. O total de uma dupla é a soma dos dois valores individuais.</div>
+    <div class="field-row" style="max-width:400px;margin-bottom:1.5rem">
+      <div class="field-group">
+        <label>1ª inscrição (R$)</label>
+        <input type="number" id="cfgPreco1" value="${S.config.precoPrimeiraInscricao}" min="0" step="0.01" onchange="salvarPrecosInscricao()">
+      </div>
+      <div class="field-group">
+        <label>2ª inscrição (R$)</label>
+        <input type="number" id="cfgPreco2" value="${S.config.precoSegundaInscricao}" min="0" step="0.01" onchange="salvarPrecosInscricao()">
+      </div>
     </div>
 
     <h3 style="font-size:15px;margin-bottom:10px;color:var(--muted)">Categorias do torneio <button class="btn-outline btn-sm" onclick="abrirModalCategoria()">+ Nova</button></h3>
     <div class="config-lista">
       ${cats.length===0 ? `<div class="vazio">Nenhuma categoria cadastrada.</div>` : cats.map(cat=>`
         <div class="config-item ${cat.ativo===false?'inativo':''}">
-          <div class="config-nome">${esc(cat.nome)}</div>
-          <div class="config-valor">${fmt(cat.valor)}</div>
+          <div class="config-nome">${esc(cat.nome)}${cat.premioCampeao||cat.premioVice ? `<div style="font-size:12px;color:var(--muted2);font-weight:400;margin-top:2px">${cat.premioCampeao?'🥇 '+esc(cat.premioCampeao):''}${cat.premioCampeao&&cat.premioVice?' · ':''}${cat.premioVice?'🥈 '+esc(cat.premioVice):''}</div>` : ''}</div>
           <button class="btn-icon" onclick="abrirModalCategoria('${cat.id}')">✎</button>
           <button class="btn-icon" onclick="toggleAtivo('categorias','${cat.id}',${cat.ativo===false})">${cat.ativo===false?'↩':'🚫'}</button>
         </div>`).join('')}
@@ -1048,6 +1177,15 @@ function salvarComissaoGlobal(){
   const v = Number(document.getElementById('cfgComissao').value);
   REF.config.update({comissaoPercentual: v}).then(()=>toast('Comissão global atualizada para '+v+'%.'));
 }
+function salvarPixCnpj(){
+  const v = document.getElementById('cfgPixCnpj').value.trim();
+  REF.config.update({pixCnpj: v}).then(()=>toast('Chave PIX atualizada.'));
+}
+function salvarPrecosInscricao(){
+  const p1 = Number(document.getElementById('cfgPreco1').value);
+  const p2 = Number(document.getElementById('cfgPreco2').value);
+  REF.config.update({precoPrimeiraInscricao: p1, precoSegundaInscricao: p2}).then(()=>toast('Preços de inscrição atualizados.'));
+}
 function toggleAtivo(colecao, id, novoAtivo){
   const ref = colecao==='categorias'?REF.categorias : colecao==='tiers'?REF.tiers : REF.usuarios;
   ref.child(id).update({ativo: novoAtivo});
@@ -1058,24 +1196,29 @@ function abrirModalCategoria(id){
   if(id){
     const cat = S.categorias[id];
     document.getElementById('modalCategoriaTitulo').textContent='Editar categoria';
-    document.getElementById('fcNome').value = cat.nome; document.getElementById('fcValor').value = cat.valor;
+    document.getElementById('fcNome').value = cat.nome;
+    document.getElementById('fcPremioCampeao').value = cat.premioCampeao||'';
+    document.getElementById('fcPremioVice').value = cat.premioVice||'';
     S.editando = {tipo:'categoria', id};
   }else{
     document.getElementById('modalCategoriaTitulo').textContent='Nova categoria';
-    document.getElementById('fcNome').value=''; document.getElementById('fcValor').value='';
+    document.getElementById('fcNome').value='';
+    document.getElementById('fcPremioCampeao').value='';
+    document.getElementById('fcPremioVice').value='';
     S.editando = {tipo:'categoria', id:null};
   }
   abrirModal('modalCategoria');
 }
 function salvarCategoria(){
   const nome = document.getElementById('fcNome').value.trim();
-  const valor = Number(document.getElementById('fcValor').value);
+  const premioCampeao = document.getElementById('fcPremioCampeao').value.trim();
+  const premioVice = document.getElementById('fcPremioVice').value.trim();
   if(!nome) return toast('Digite o nome da categoria');
   if(S.editando && S.editando.id){
-    REF.categorias.child(S.editando.id).update({nome, valor});
+    REF.categorias.child(S.editando.id).update({nome, premioCampeao: premioCampeao||null, premioVice: premioVice||null});
   }else{
     const ordem = Object.keys(S.categorias||{}).length;
-    REF.categorias.push({nome, valor, ativo:true, ordem});
+    REF.categorias.push({nome, premioCampeao: premioCampeao||null, premioVice: premioVice||null, ativo:true, ordem});
   }
   fecharModal('modalCategoria');
 }
@@ -1148,7 +1291,7 @@ function salvarUsuario(){
    idempotente: rodar de novo só atualiza os mesmos registros, não duplica.
    ═══════════════════════════════════════════════════════════════════════ */
 function seedDadosIniciais(){
-  if(!confirm('Isso vai criar/atualizar: time (11 pessoas com PIN), tiers de patrocínio (valores reais) e checklist (itens reais do Trello). Categorias entram com valor R$ 0,00 — precisa ajustar depois. Continuar?')) return;
+  if(!confirm('Isso vai criar/atualizar: time (11 pessoas com PIN), tiers de patrocínio, checklist (itens reais do Trello), preços de inscrição (R$75/R$35 por jogador), chave PIX e premiação de cada categoria. Continuar?')) return;
 
   const usuarios = {
     seed_gustavo:        {nome:'Gustavo Hoewell', cargo:'CEO',        pin:'4300', isAdmin:true,  isFinanceiro:true,  ativo:true},
@@ -1171,16 +1314,24 @@ function seedDadosIniciais(){
     seed_bronze: {nome:'Bronze', valor:400,  ativo:true, ordem:3}
   };
 
-  // Categorias da programação prévia (14-16/08) — valor ainda não definido pelo Gustavo.
+  // Categorias da programação prévia (14-16/08). Preço não é mais por categoria — é por
+  // jogador(a), configurado em config.precoPrimeiraInscricao/precoSegundaInscricao (abaixo).
   const categorias = {
-    seed_femab:    {nome:'Feminino A/B',   valor:0, ativo:true, ordem:0},
-    seed_mascab:   {nome:'Masculino A/B',  valor:0, ativo:true, ordem:1},
-    seed_femc:     {nome:'Feminino C',     valor:0, ativo:true, ordem:2},
-    seed_mascc:    {nome:'Masculino C',    valor:0, ativo:true, ordem:3},
-    seed_mascde:   {nome:'Masculino D/E',  valor:0, ativo:true, ordem:4},
-    seed_femde:    {nome:'Feminino D/E',   valor:0, ativo:true, ordem:5},
-    seed_mistade:  {nome:'Mista D/E',      valor:0, ativo:true, ordem:6},
-    seed_mistaopen:{nome:'Mista Open',     valor:0, ativo:true, ordem:7}
+    seed_femab:    {nome:'Feminino A/B',   premioCampeao:'R$ 600,00', premioVice:'R$ 200,00', ativo:true, ordem:0},
+    seed_mascab:   {nome:'Masculino A/B',  premioCampeao:'R$ 600,00', premioVice:'R$ 200,00', ativo:true, ordem:1},
+    seed_femc:     {nome:'Feminino C',     premioCampeao:'R$ 500,00', premioVice:'R$ 150,00', ativo:true, ordem:2},
+    seed_mascc:    {nome:'Masculino C',    premioCampeao:'R$ 500,00', premioVice:'R$ 150,00', ativo:true, ordem:3},
+    seed_mascde:   {nome:'Masculino D/E',  premioCampeao:'R$ 400,00', premioVice:'R$ 100,00', ativo:true, ordem:4},
+    seed_femde:    {nome:'Feminino D/E',   premioCampeao:'R$ 400,00', premioVice:'R$ 100,00', ativo:true, ordem:5},
+    seed_mistade:  {nome:'Mista D/E',      premioCampeao:'R$ 250,00', premioVice:'Voucher R$ 200,00 BOUSSOLÉ para a dupla', ativo:true, ordem:6},
+    seed_mistaopen:{nome:'Mista Open',     premioCampeao:'R$ 300,00', premioVice:'Voucher R$ 200,00 ZUA para a dupla', ativo:true, ordem:7}
+  };
+
+  // Preços de inscrição por jogador(a) + chave PIX pra pagamento.
+  const config = {
+    precoPrimeiraInscricao: 75,
+    precoSegundaInscricao: 35,
+    pixCnpj: '55494064000188'
   };
 
   // Checklist real (migrado do quadro Trello em 05/08/2026), reorganizado nos grupos do app.
@@ -1205,9 +1356,10 @@ function seedDadosIniciais(){
     REF.usuarios.update(usuarios),
     REF.tiers.update(tiers),
     REF.categorias.update(categorias),
-    REF.tarefas.update(tarefas)
+    REF.tarefas.update(tarefas),
+    REF.config.update(config)
   ]).then(()=>{
-    toast('Dados iniciais aplicados! Falta só ajustar o valor das categorias.');
+    toast('Dados iniciais aplicados!');
   }).catch(err=>{
     console.error(err);
     toast('Erro ao aplicar — confira se o Firebase já está configurado.');
