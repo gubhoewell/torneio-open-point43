@@ -443,11 +443,11 @@ function souFinanceiro(){ return !!usuarioAtualObj().isFinanceiro || souAdmin();
 /* ═══════════════════════ TABS ═══════════════════════ */
 const TABS_BASE = [
   {id:'venda', label:'💰 Lançar Venda'},
-  {id:'checklist', label:'✅ Checklist'},
   {id:'resultado', label:'📊 Meu Resultado'},
 ];
 const TABS_ADMIN = [
   {id:'confirmar', label:'💵 Confirmar Pagtos'},
+  {id:'checklist', label:'✅ Checklist'},
   {id:'geral', label:'📈 Visão Geral'},
   {id:'ranking', label:'🏆 Ranking'},
   {id:'todas', label:'📋 Todas as Vendas'},
@@ -456,10 +456,12 @@ const TABS_ADMIN = [
 function tabsVisiveis(){
   let t = [...TABS_BASE];
   if(souFinanceiro()) t.push(TABS_ADMIN[0]); // confirmar pagamentos
-  if(souAdmin()) t.push(...TABS_ADMIN.slice(1));
+  if(souAdmin()) t.push(...TABS_ADMIN.slice(1)); // checklist + resto é só admin
   return t;
 }
 function montarTabs(){
+  // se o usuário perdeu acesso à aba ativa (ex: checklist deixou de ser pública), volta pra Lançar Venda
+  if(!tabsVisiveis().some(t=>t.id===S.tabAtiva)) S.tabAtiva = 'venda';
   const nav = document.getElementById('tabsNav');
   nav.innerHTML = tabsVisiveis().map(t=>`<div class="tab ${t.id===S.tabAtiva?'ativo':''}" onclick="mudarTab('${t.id}')">${t.label}</div>`).join('');
 }
@@ -1012,7 +1014,7 @@ function seedDadosIniciais(){
   const usuarios = {
     seed_gustavo:        {nome:'Gustavo Hoewell', cargo:'CEO',        pin:'4300', isAdmin:true,  isFinanceiro:true,  ativo:true},
     seed_mateus:         {nome:'Mateus',           cargo:'COO',        pin:'4302', isAdmin:true,  isFinanceiro:true,  ativo:true},
-    seed_benedito:       {nome:'Benedito',         cargo:'Financeiro', pin:'4301', isAdmin:false, isFinanceiro:true,  ativo:true},
+    seed_benedito:       {nome:'Benedito',         cargo:'Financeiro', pin:'4301', isAdmin:true,  isFinanceiro:true,  ativo:true},
     seed_gabriel:        {nome:'Gabriel',          cargo:'Professor',  pin:'1001', isAdmin:false, isFinanceiro:false, ativo:true},
     seed_vinicius:       {nome:'Vinicius',         cargo:'Professor',  pin:'1002', isAdmin:false, isFinanceiro:false, ativo:true},
     seed_roberto:        {nome:'Roberto',          cargo:'Professor',  pin:'1003', isAdmin:false, isFinanceiro:false, ativo:true},
