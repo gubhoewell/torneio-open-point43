@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Torneio OPEN — Point 43</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#0f0f0f; --surface:#141414; --card:#1a1a1a; --card2:#1f1f1f; --border:#2a2a2a;
+    --gold:#c9a84c; --goldsoft:#c9a84c22; --text:#f0f0f0; --muted:#999; --muted2:#666;
+    --green:#5a9e5a; --greensoft:#1e2a1e; --red:#e24b4a; --redsoft:#2a1e1e;
+    --blue:#7777cc; --bluesoft:#1e1e2a; --orange:#e2874a; --orangesoft:#2a1e10;
+    --r:16px; --rs:10px;
+  }
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:16px;-webkit-tap-highlight-color:transparent}
+  button,input,select,textarea{font-family:inherit;font-size:inherit}
+  ::-webkit-scrollbar{width:8px;height:8px}
+  ::-webkit-scrollbar-thumb{background:#333;border-radius:4px}
+
+  /* ── TELA DE SELEÇÃO / LOGIN ── */
+  #tela-selecao{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:2rem 1.25rem}
+  .logo{font-size:13px;letter-spacing:.15em;color:var(--gold);font-weight:700;margin-bottom:6px;text-align:center}
+  .logo-titulo{font-size:22px;font-weight:800;color:#fff;margin-bottom:2rem;text-align:center}
+  .grid-usuarios{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;max-width:640px;width:100%}
+  .btn-usuario{background:var(--card);border:1px solid var(--border);border-radius:var(--rs);padding:1.1rem .8rem;cursor:pointer;transition:.15s;text-align:center;color:var(--text)}
+  .btn-usuario:hover,.btn-usuario:active{border-color:var(--gold);background:#1f1c14}
+  .avatar{width:44px;height:44px;border-radius:50%;background:var(--goldsoft);border:1.5px solid #c9a84c55;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;color:var(--gold);margin:0 auto 10px}
+  .btn-usuario .nome{font-size:15px;font-weight:600}
+  .btn-usuario .cargo{font-size:12px;color:var(--muted2);margin-top:2px}
+  .selecao-vazio{color:var(--muted2);text-align:center;font-size:14px;max-width:420px;line-height:1.6}
+
+  /* ── PIN MODAL ── */
+  .pin-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:900;align-items:center;justify-content:center;padding:20px}
+  .pin-modal.show{display:flex}
+  .pin-box{background:var(--surface);border:1px solid #333;border-radius:var(--r);padding:28px 24px;width:100%;max-width:320px;text-align:center}
+  .pin-avatar{width:64px;height:64px;border-radius:50%;background:var(--goldsoft);border:1.5px solid var(--gold);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px;color:var(--gold);margin:0 auto 10px}
+  .pin-nome{font-size:19px;font-weight:800;color:var(--text);margin-bottom:4px}
+  .pin-sub{font-size:13px;color:var(--muted2);margin-bottom:20px}
+  .pin-dots{display:flex;justify-content:center;gap:12px;margin-bottom:20px}
+  .pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid #444;background:transparent;transition:.15s}
+  .pin-dot.filled{background:var(--gold);border-color:var(--gold)}
+  .pin-dot.error{background:var(--red);border-color:var(--red)}
+  .pin-keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+  .pin-key{background:var(--card2);border:1px solid #333;border-radius:var(--rs);padding:16px 8px;font-size:20px;font-weight:700;color:var(--text);cursor:pointer;user-select:none}
+  .pin-key:active{background:#333}
+  .pin-key.del{font-size:15px;color:var(--muted)}
+  .pin-key.zero{grid-column:2}
+  .pin-error{color:var(--red);font-size:13px;font-weight:600;min-height:20px;margin-bottom:4px}
+  .pin-cancel{color:var(--muted);font-size:13px;cursor:pointer;text-decoration:underline;background:none;border:none;padding:4px}
+
+  /* ── APP ── */
+  #app{display:none}
+  header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 1rem;display:flex;align-items:center;justify-content:space-between;height:58px;position:sticky;top:0;z-index:10;gap:8px}
+  .header-esq{display:flex;align-items:center;gap:10px;min-width:0}
+  .header-avatar{width:34px;height:34px;min-width:34px;border-radius:50%;background:var(--goldsoft);border:1.5px solid var(--gold);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:var(--gold)}
+  .header-nome{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .header-cargo{font-size:11px;color:var(--muted2)}
+  .badge-admin{font-size:10px;background:var(--goldsoft);color:var(--gold);padding:1px 6px;border-radius:8px;font-weight:700;margin-left:4px}
+  .btn-trocar{background:none;border:1px solid var(--border);color:var(--muted);font-size:13px;padding:6px 10px;border-radius:6px;cursor:pointer;white-space:nowrap}
+  .btn-trocar:hover{color:var(--text);border-color:#444}
+
+  .tabs{display:flex;gap:2px;padding:.6rem .5rem 0;border-bottom:1px solid var(--border);background:var(--surface);overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{padding:9px 13px;font-size:13.5px;color:var(--muted2);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;border-radius:6px 6px 0 0;font-weight:500}
+  .tab:hover{color:var(--text)}
+  .tab.ativo{color:var(--gold);border-bottom-color:var(--gold);background:#1c1908}
+
+  .conteudo{padding:1.25rem 1rem 3rem;max-width:920px;margin:0 auto}
+  h2.titulo-secao{font-size:19px;font-weight:800;margin-bottom:1rem;display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap}
+  .sub-secao{font-size:13px;color:var(--muted2);margin:-8px 0 16px}
+
+  /* ── BOTÕES GENÉRICOS ── */
+  .btn{background:var(--gold);color:#000;border:none;padding:11px 18px;border-radius:8px;font-size:14.5px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+  .btn:hover{background:#d4b05e}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .btn-outline{background:none;border:1px solid var(--border);color:var(--text);padding:10px 16px;border-radius:8px;font-size:14px;cursor:pointer}
+  .btn-outline:hover{border-color:var(--gold);color:var(--gold)}
+  .btn-danger{background:none;border:1px solid var(--red);color:var(--red);padding:8px 14px;border-radius:8px;font-size:13px;cursor:pointer}
+  .btn-danger:hover{background:var(--red);color:#fff}
+  .btn-green{background:var(--green);color:#000;border:none;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}
+  .btn-sm{padding:5px 10px;font-size:12px;border-radius:6px}
+  .btn-icon{background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:3px 6px;border-radius:4px}
+  .btn-icon:hover{color:var(--text)}
+
+  /* ── TOGGLE TIPO VENDA ── */
+  .toggle-tipo{display:flex;gap:8px;margin-bottom:1.25rem;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:4px}
+  .toggle-op{flex:1;text-align:center;padding:10px;border-radius:7px;cursor:pointer;font-size:14px;font-weight:600;color:var(--muted)}
+  .toggle-op.ativo{background:var(--gold);color:#000}
+
+  /* ── CARDS / FORM ── */
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1.1rem}
+  .form-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1.25rem;margin-bottom:1.25rem}
+  .field-group{margin-bottom:14px}
+  .field-group label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:6px;font-weight:600}
+  .field-group input,.field-group select,.field-group textarea{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:11px 12px;font-size:15px}
+  .field-group input:focus,.field-group select:focus,.field-group textarea:focus{outline:none;border-color:var(--gold)}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:520px){.field-row{grid-template-columns:1fr}}
+  .valor-preview{background:var(--goldsoft);border:1px dashed var(--gold);border-radius:8px;padding:10px 12px;font-size:14px;color:var(--gold);font-weight:700;margin-bottom:14px}
+
+  /* ── METRIC CARDS ── */
+  .metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:1.5rem}
+  .metric-card{background:var(--card);border:1px solid var(--border);border-radius:var(--rs);padding:14px}
+  .metric-label{font-size:12px;color:var(--muted2);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+  .metric-valor{font-size:22px;font-weight:800}
+  .metric-valor.gold{color:var(--gold)}
+  .metric-valor.green{color:var(--green)}
+  .metric-valor.muted{color:var(--muted)}
+
+  /* ── LISTA DE VENDAS ── */
+  .lista-vendas{display:flex;flex-direction:column;gap:8px}
+  .venda-card{background:var(--card);border:1px solid var(--border);border-radius:var(--rs);padding:12px 14px;display:flex;align-items:center;gap:12px}
+  .venda-card.pendente{border-left:3px solid var(--orange)}
+  .venda-card.confirmado{border-left:3px solid var(--green)}
+  .venda-card.cancelado{border-left:3px solid var(--red);opacity:.5}
+  .venda-corpo{flex:1;min-width:0}
+  .venda-titulo{font-size:14.5px;font-weight:600;margin-bottom:3px}
+  .venda-meta{font-size:12.5px;color:var(--muted2);display:flex;gap:8px;flex-wrap:wrap}
+  .venda-valor{font-size:16px;font-weight:800;color:var(--gold);white-space:nowrap}
+  .status-badge{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:700;white-space:nowrap}
+  .status-badge.pendente{background:var(--orangesoft);color:var(--orange)}
+  .status-badge.confirmado{background:var(--greensoft);color:var(--green)}
+  .status-badge.cancelado{background:var(--redsoft);color:var(--red)}
+  .venda-acoes{display:flex;gap:6px}
+
+  .filtros{display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap}
+  .filtro-btn{background:var(--card);border:1px solid var(--border);color:var(--muted);padding:6px 13px;border-radius:20px;font-size:13px;cursor:pointer}
+  .filtro-btn.ativo{background:#1f1c14;border-color:var(--gold);color:var(--gold)}
+
+  .vazio{text-align:center;padding:2.5rem 1rem;color:var(--muted2);font-size:14px}
+
+  /* ── CHECKLIST ── */
+  .rotina-grupo{background:var(--card);border:1px solid var(--border);border-radius:var(--rs);margin-bottom:12px;overflow:hidden}
+  .rotina-grupo summary{padding:12px 14px;cursor:pointer;font-weight:700;font-size:14.5px;display:flex;align-items:center;justify-content:space-between;list-style:none}
+  .rotina-grupo summary::-webkit-details-marker{display:none}
+  .grupo-titulo{display:flex;align-items:center;gap:8px}
+  .grupo-progresso{font-size:12px;color:var(--muted2);font-weight:500}
+  .grupo-itens{padding:0 10px 10px;display:flex;flex-direction:column;gap:6px}
+  .item-tarefa{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:10px}
+  .item-tarefa.concluida{opacity:.45}
+  .item-tarefa.em-andamento{border-left:3px solid var(--gold)}
+  .item-check{width:22px;height:22px;min-width:22px;border-radius:50%;border:1.5px solid #444;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .item-check.concluida{background:var(--green);border-color:var(--green)}
+  .item-check.concluida::after{content:'✓';font-size:12px;color:#000;font-weight:800}
+  .item-check.em-andamento{border-color:var(--gold)}
+  .item-check.em-andamento::after{content:'▶';font-size:9px;color:var(--gold)}
+  .item-corpo{flex:1;min-width:0}
+  .item-desc{font-size:14.5px;font-weight:500;margin-bottom:3px}
+  .item-desc.concluida{text-decoration:line-through}
+  .item-meta{font-size:12px;color:var(--muted2)}
+  .item-acoes{display:flex;gap:2px;align-items:center}
+  .item-drag{cursor:grab;color:var(--muted2);font-size:14px;padding:2px 4px}
+
+  /* ── CONFIG LISTA ── */
+  .config-lista{display:flex;flex-direction:column;gap:8px;margin-bottom:1.25rem}
+  .config-item{background:var(--card);border:1px solid var(--border);border-radius:var(--rs);padding:11px 14px;display:flex;align-items:center;gap:10px}
+  .config-item.inativo{opacity:.4}
+  .config-nome{flex:1;font-size:14.5px;font-weight:600}
+  .config-valor{font-size:14px;color:var(--gold);font-weight:700;white-space:nowrap}
+
+  /* ── TABELA ── */
+  .tabela-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--rs)}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:640px}
+  th{text-align:left;padding:10px 12px;background:var(--card2);color:var(--muted2);font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;font-weight:700;border-bottom:1px solid var(--border)}
+  td{padding:10px 12px;border-bottom:1px solid var(--border)}
+  tr:last-child td{border-bottom:none}
+
+  /* ── MODAL GENÉRICO ── */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:800;align-items:flex-start;justify-content:center;padding:5vh 1rem;overflow-y:auto}
+  .modal-overlay.show{display:flex}
+  .modal-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;width:100%;max-width:440px}
+  .modal-titulo{font-size:17px;font-weight:800;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
+  .modal-fechar{background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer}
+  .modal-acoes{display:flex;gap:10px;justify-content:flex-end;margin-top:6px}
+
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--card2);border:1px solid var(--gold);color:var(--text);padding:12px 20px;border-radius:10px;font-size:14px;font-weight:600;z-index:1000;display:none;box-shadow:0 4px 20px rgba(0,0,0,.4)}
+  .toast.show{display:block}
+
+  @media(max-width:600px){
+    .conteudo{padding:1rem .75rem 3rem}
+    .venda-card{flex-wrap:wrap}
+  }
+</style>
+</head>
+<body>
+
+<!-- TELA DE SELEÇÃO -->
+<div id="tela-selecao">
+  <div class="logo">POINT 43</div>
+  <div class="logo-titulo">🎾 Torneio OPEN — quem é você?</div>
+  <div class="grid-usuarios" id="gridUsuarios"></div>
+</div>
+
+<!-- PIN MODAL -->
+<div class="pin-modal" id="pinModal">
+  <div class="pin-box">
+    <div class="pin-avatar" id="pinAvatar">–</div>
+    <div class="pin-nome" id="pinNome">—</div>
+    <div class="pin-sub">Digite seu PIN de 4 dígitos</div>
+    <div class="pin-dots" id="pinDots">
+      <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div>
+    </div>
+    <div class="pin-error" id="pinError"></div>
+    <div class="pin-keypad">
+      <button class="pin-key" onclick="pinKey('1')">1</button><button class="pin-key" onclick="pinKey('2')">2</button><button class="pin-key" onclick="pinKey('3')">3</button>
+      <button class="pin-key" onclick="pinKey('4')">4</button><button class="pin-key" onclick="pinKey('5')">5</button><button class="pin-key" onclick="pinKey('6')">6</button>
+      <button class="pin-key" onclick="pinKey('7')">7</button><button class="pin-key" onclick="pinKey('8')">8</button><button class="pin-key" onclick="pinKey('9')">9</button>
+      <button class="pin-key zero" onclick="pinKey('0')">0</button><button class="pin-key del" onclick="pinDel()">⌫</button>
+    </div>
+    <button class="pin-cancel" onclick="fecharPinModal()">Cancelar</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header>
+    <div class="header-esq">
+      <div class="header-avatar" id="headerAvatar">–</div>
+      <div>
+        <div class="header-nome" id="headerNome">—<span class="badge-admin" id="badgeAdmin" style="display:none">ADMIN</span></div>
+        <div class="header-cargo">Torneio OPEN Point 43 · 14-16/08</div>
+      </div>
+    </div>
+    <button class="btn-trocar" onclick="trocarUsuario()">Trocar</button>
+  </header>
+  <nav class="tabs" id="tabsNav"></nav>
+  <div class="conteudo" id="conteudo"></div>
+</div>
+
+<!-- MODAL TAREFA -->
+<div class="modal-overlay" id="modalTarefa">
+  <div class="modal-box">
+    <div class="modal-titulo"><span id="modalTarefaTitulo">Nova tarefa</span><button class="modal-fechar" onclick="fecharModal('modalTarefa')">✕</button></div>
+    <div class="field-group"><label>Descrição</label><textarea id="ftDesc" rows="2" placeholder="Ex: Confirmar arbitragem das quadras 1-4"></textarea></div>
+    <div class="field-group"><label>Grupo</label>
+      <select id="ftGrupo"></select>
+    </div>
+    <div class="field-group"><label>Responsável (opcional)</label><select id="ftResponsavel"><option value="">— sem responsável —</option></select></div>
+    <div class="modal-acoes"><button class="btn-outline" onclick="fecharModal('modalTarefa')">Cancelar</button><button class="btn" onclick="salvarTarefa()">Salvar</button></div>
+  </div>
+</div>
+
+<!-- MODAL NOVO GRUPO -->
+<div class="modal-overlay" id="modalGrupo">
+  <div class="modal-box">
+    <div class="modal-titulo"><span>Novo grupo do checklist</span><button class="modal-fechar" onclick="fecharModal('modalGrupo')">✕</button></div>
+    <div class="field-group"><label>Nome do grupo</label><input id="fgNome" placeholder="Ex: Estrutura & Logística"></div>
+    <div class="modal-acoes"><button class="btn-outline" onclick="fecharModal('modalGrupo')">Cancelar</button><button class="btn" onclick="salvarGrupo()">Criar</button></div>
+  </div>
+</div>
+
+<!-- MODAL CATEGORIA -->
+<div class="modal-overlay" id="modalCategoria">
+  <div class="modal-box">
+    <div class="modal-titulo"><span id="modalCategoriaTitulo">Nova categoria</span><button class="modal-fechar" onclick="fecharModal('modalCategoria')">✕</button></div>
+    <div class="field-group"><label>Nome da categoria</label><input id="fcNome" placeholder="Ex: Dupla Mista Iniciante"></div>
+    <div class="field-group"><label>Valor da inscrição por dupla (R$)</label><input id="fcValor" type="number" min="0" step="0.01" placeholder="0,00"></div>
+    <div class="modal-acoes"><button class="btn-outline" onclick="fecharModal('modalCategoria')">Cancelar</button><button class="btn" onclick="salvarCategoria()">Salvar</button></div>
+  </div>
+</div>
+
+<!-- MODAL TIER -->
+<div class="modal-overlay" id="modalTier">
+  <div class="modal-box">
+    <div class="modal-titulo"><span id="modalTierTitulo">Novo tier de patrocínio</span><button class="modal-fechar" onclick="fecharModal('modalTier')">✕</button></div>
+    <div class="field-group"><label>Nome do tier</label><input id="ftrNome" placeholder="Ex: Master, Ouro, Prata, Bronze"></div>
+    <div class="field-group"><label>Valor da cota (R$)</label><input id="ftrValor" type="number" min="0" step="0.01" placeholder="0,00"></div>
+    <div class="modal-acoes"><button class="btn-outline" onclick="fecharModal('modalTier')">Cancelar</button><button class="btn" onclick="salvarTier()">Salvar</button></div>
+  </div>
+</div>
+
+<!-- MODAL USUÁRIO -->
+<div class="modal-overlay" id="modalUsuario">
+  <div class="modal-box">
+    <div class="modal-titulo"><span id="modalUsuarioTitulo">Novo usuário</span><button class="modal-fechar" onclick="fecharModal('modalUsuario')">✕</button></div>
+    <div class="field-group"><label>Nome</label><input id="fuNome" placeholder="Ex: João Professor"></div>
+    <div class="field-group"><label>Cargo (opcional)</label><input id="fuCargo" placeholder="Ex: Professor"></div>
+    <div class="field-group"><label>PIN (4 dígitos)</label><input id="fuPin" maxlength="4" inputmode="numeric" placeholder="0000"></div>
+    <div class="field-row">
+      <div class="field-group"><label><input type="checkbox" id="fuAdmin" style="width:auto;margin-right:6px">Admin (gestão total)</label></div>
+      <div class="field-group"><label><input type="checkbox" id="fuFinanceiro" style="width:auto;margin-right:6px">Financeiro (confirma pagto)</label></div>
+    </div>
+    <div class="modal-acoes"><button class="btn-outline" onclick="fecharModal('modalUsuario')">Cancelar</button><button class="btn" onclick="salvarUsuario()">Salvar</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ══════════════ FIREBASE SDK ══════════════ -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════
+   CONFIGURAÇÃO FIREBASE
+   TODO: substituir pelos valores reais do projeto
+   "point-43-torneio-open" criado no Firebase Console.
+   Até lá o app carrega mas não lê/grava dados reais.
+   ═══════════════════════════════════════════════════════════ */
+const FIREBASE_CONFIG = {
+  apiKey: "COLOQUE_AQUI",
+  authDomain: "point-43-torneio-open.firebaseapp.com",
+  databaseURL: "https://point-43-torneio-open-default-rtdb.firebaseio.com",
+  projectId: "point-43-torneio-open",
+  storageBucket: "point-43-torneio-open.appspot.com",
+  messagingSenderId: "COLOQUE_AQUI",
+  appId: "COLOQUE_AQUI"
+};
+
+let db = null;
+try{
+  firebase.initializeApp(FIREBASE_CONFIG);
+  db = firebase.database();
+}catch(e){ console.error('Firebase não configurado ainda:', e); }
+
+const REF = db ? {
+  usuarios: db.ref('usuarios'),
+  categorias: db.ref('categorias'),
+  tiers: db.ref('tiersPatrocinio'),
+  config: db.ref('config'),
+  inscricoes: db.ref('inscricoes'),
+  patrocinios: db.ref('patrocinios'),
+  tarefas: db.ref('tarefasEvento')
+} : {};
+
+/* ═══════════════════════ ESTADO ═══════════════════════ */
+const S = {
+  usuarioAtual: null,
+  usuarios: {}, categorias: {}, tiers: {}, inscricoes: {}, patrocinios: {}, tarefas: {},
+  config: { comissaoPercentual: 10 },
+  tabAtiva: 'venda',
+  tipoVenda: 'inscricao',
+  pinBuffer: '', pinTargetUid: null,
+  filtroVendas: 'todos',
+  editando: null // {tipo, id} para modais de edição
+};
+
+/* ═══════════════════════ UTIL ═══════════════════════ */
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fmt(v){ return 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function iniciais(nome){ return String(nome||'?').trim().split(/\s+/).slice(0,2).map(p=>p[0]).join('').toUpperCase(); }
+function fmtDataHora(ts){ if(!ts) return '—'; const d=new Date(ts); return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 2600); }
+function abrirModal(id){ document.getElementById(id).classList.add('show'); }
+function fecharModal(id){ document.getElementById(id).classList.remove('show'); S.editando=null; }
+function listaAtivos(obj){ return Object.entries(obj||{}).filter(([id,v])=>v.ativo!==false).map(([id,v])=>({id,...v})); }
+function listaOrdenada(obj){ return listaAtivos(obj).sort((a,b)=>(a.ordem||0)-(b.ordem||0)); }
+
+/* ═══════════════════════ LISTENERS FIREBASE ═══════════════════════ */
+function initListeners(){
+  renderSelecao();
+  if(!db) return;
+  REF.usuarios.on('value', s=>{ S.usuarios = s.val()||{}; renderSelecao(); if(S.usuarioAtual) renderConteudoSeAtivo(); });
+  REF.categorias.on('value', s=>{ S.categorias = s.val()||{}; renderConteudoSeAtivo(); });
+  REF.tiers.on('value', s=>{ S.tiers = s.val()||{}; renderConteudoSeAtivo(); });
+  REF.config.on('value', s=>{ S.config = Object.assign({comissaoPercentual:10}, s.val()||{}); renderConteudoSeAtivo(); });
+  REF.inscricoes.on('value', s=>{ S.inscricoes = s.val()||{}; renderConteudoSeAtivo(); });
+  REF.patrocinios.on('value', s=>{ S.patrocinios = s.val()||{}; renderConteudoSeAtivo(); });
+  REF.tarefas.on('value', s=>{ S.tarefas = s.val()||{}; renderConteudoSeAtivo(); });
+}
+function renderConteudoSeAtivo(){ if(document.getElementById('app').style.display==='block') renderConteudo(); }
+
+/* ═══════════════════════ LOGIN ═══════════════════════ */
+function renderSelecao(){
+  const grid = document.getElementById('gridUsuarios');
+  const usuarios = listaAtivos(S.usuarios);
+  if(!db){
+    grid.innerHTML = `<div class="selecao-vazio">⚠️ Firebase ainda não configurado neste arquivo (FIREBASE_CONFIG). Peça pro Gustavo criar o projeto "point-43-torneio-open" e colar as chaves no topo do &lt;script&gt;.</div>`;
+    return;
+  }
+  if(usuarios.length===0){
+    grid.innerHTML = `<div class="selecao-vazio">Nenhum usuário cadastrado ainda. Peça pro admin cadastrar o time em <b>Configurações → Usuários</b> (entre como admin diretamente pelo Firebase Console na primeira vez, ou rode o seed inicial).</div>`;
+    return;
+  }
+  grid.innerHTML = usuarios.sort((a,b)=>a.nome.localeCompare(b.nome)).map(u=>`
+    <div class="btn-usuario" onclick="abrirPinModal('${u.id}')">
+      <div class="avatar">${esc(iniciais(u.nome))}</div>
+      <div class="nome">${esc(u.nome)}</div>
+      <div class="cargo">${esc(u.cargo||(u.isAdmin?'Admin':u.isFinanceiro?'Financeiro':'Vendedor(a)'))}</div>
+    </div>`).join('');
+}
+
+function abrirPinModal(uid){
+  const u = S.usuarios[uid]; if(!u) return;
+  S.pinTargetUid = uid; S.pinBuffer='';
+  document.getElementById('pinAvatar').textContent = iniciais(u.nome);
+  document.getElementById('pinNome').textContent = u.nome;
+  document.getElementById('pinError').textContent = '';
+  updatePinDots();
+  abrirModal('pinModal');
+}
+function fecharPinModal(){ document.getElementById('pinModal').classList.remove('show'); S.pinBuffer=''; S.pinTargetUid=null; }
+function pinKey(d){
+  if(S.pinBuffer.length>=4) return;
+  S.pinBuffer += d;
+  updatePinDots();
+  if(S.pinBuffer.length===4) setTimeout(checkPin, 120);
+}
+function pinDel(){ S.pinBuffer = S.pinBuffer.slice(0,-1); updatePinDots(); }
+function updatePinDots(state){
+  for(let i=0;i<4;i++){
+    const el = document.getElementById('pd'+i);
+    el.className = 'pin-dot' + (i<S.pinBuffer.length ? ' filled':'') + (state==='error' ? ' error':'');
+  }
+}
+function checkPin(){
+  const u = S.usuarios[S.pinTargetUid];
+  if(!u) return;
+  if(String(u.pin)===S.pinBuffer){
+    entrarComoUsuario(S.pinTargetUid);
+  }else{
+    updatePinDots('error');
+    document.getElementById('pinError').textContent = 'PIN incorreto';
+    setTimeout(()=>{ S.pinBuffer=''; updatePinDots(); }, 500);
+  }
+}
+function entrarComoUsuario(uid){
+  S.usuarioAtual = uid;
+  localStorage.setItem('torneio_uid', uid);
+  fecharPinModal();
+  mostrarApp();
+}
+function trocarUsuario(){
+  S.usuarioAtual = null;
+  localStorage.removeItem('torneio_uid');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('tela-selecao').style.display = 'flex';
+}
+function mostrarApp(){
+  const u = S.usuarios[S.usuarioAtual]; if(!u) return trocarUsuario();
+  document.getElementById('tela-selecao').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('headerAvatar').textContent = iniciais(u.nome);
+  document.getElementById('headerNome').firstChild.textContent = u.nome+' ';
+  document.getElementById('badgeAdmin').style.display = u.isAdmin ? 'inline-block' : 'none';
+  montarTabs();
+  mudarTab(S.tabAtiva);
+}
+function usuarioAtualObj(){ return S.usuarios[S.usuarioAtual] || {}; }
+function souAdmin(){ return !!usuarioAtualObj().isAdmin; }
+function souFinanceiro(){ return !!usuarioAtualObj().isFinanceiro || souAdmin(); }
+
+/* ═══════════════════════ TABS ═══════════════════════ */
+const TABS_BASE = [
+  {id:'venda', label:'💰 Lançar Venda'},
+  {id:'checklist', label:'✅ Checklist'},
+  {id:'resultado', label:'📊 Meu Resultado'},
+];
+const TABS_ADMIN = [
+  {id:'confirmar', label:'💵 Confirmar Pagtos'},
+  {id:'geral', label:'📈 Visão Geral'},
+  {id:'ranking', label:'🏆 Ranking'},
+  {id:'todas', label:'📋 Todas as Vendas'},
+  {id:'config', label:'⚙️ Configurações'},
+];
+function tabsVisiveis(){
+  let t = [...TABS_BASE];
+  if(souFinanceiro()) t.push(TABS_ADMIN[0]); // confirmar pagamentos
+  if(souAdmin()) t.push(...TABS_ADMIN.slice(1));
+  return t;
+}
+function montarTabs(){
+  const nav = document.getElementById('tabsNav');
+  nav.innerHTML = tabsVisiveis().map(t=>`<div class="tab ${t.id===S.tabAtiva?'ativo':''}" onclick="mudarTab('${t.id}')">${t.label}</div>`).join('');
+}
+function mudarTab(id){
+  S.tabAtiva = id;
+  montarTabs();
+  renderConteudo();
+}
+function renderConteudo(){
+  const c = document.getElementById('conteudo');
+  switch(S.tabAtiva){
+    case 'venda': return renderLancarVenda(c);
+    case 'checklist': return renderChecklist(c);
+    case 'resultado': return renderMeuResultado(c);
+    case 'confirmar': return renderConfirmarPagamentos(c);
+    case 'geral': return renderVisaoGeral(c);
+    case 'ranking': return renderRanking(c);
+    case 'todas': return renderTodasVendas(c);
+    case 'config': return renderConfiguracoes(c);
+    default: c.innerHTML = '';
+  }
+}
+
+/* ═══════════════════════ 1. LANÇAR VENDA ═══════════════════════ */
+function renderLancarVenda(c){
+  const cats = listaOrdenada(S.categorias);
+  const tiers = listaOrdenada(S.tiers);
+  c.innerHTML = `
+    <h2 class="titulo-secao">💰 Lançar Venda</h2>
+    <div class="sub-secao">Sua comissão é de ${S.config.comissaoPercentual}% — paga depois que o financeiro confirmar o pagamento.</div>
+    <div class="toggle-tipo">
+      <div class="toggle-op ${S.tipoVenda==='inscricao'?'ativo':''}" onclick="setTipoVenda('inscricao')">🎾 Inscrição de Dupla</div>
+      <div class="toggle-op ${S.tipoVenda==='patrocinio'?'ativo':''}" onclick="setTipoVenda('patrocinio')">🤝 Patrocínio</div>
+    </div>
+    <div class="form-card">
+      ${ S.tipoVenda==='inscricao' ? `
+        ${cats.length===0 ? `<div class="vazio">Nenhuma categoria cadastrada ainda. Peça pro admin cadastrar em Configurações.</div>` : `
+        <div class="field-group"><label>Categoria</label>
+          <select id="vCategoria" onchange="atualizarPreviewVenda()">
+            ${cats.map(cat=>`<option value="${cat.id}">${esc(cat.nome)} — ${fmt(cat.valor)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field-row">
+          <div class="field-group"><label>Jogador(a) 1</label><input id="vJogador1" placeholder="Nome completo"></div>
+          <div class="field-group"><label>Jogador(a) 2</label><input id="vJogador2" placeholder="Nome completo"></div>
+        </div>
+        <div class="field-group"><label>Contato (WhatsApp, opcional)</label><input id="vContato" placeholder="(43) 9....."></div>
+        <div class="valor-preview" id="vPreview">Valor da inscrição: ${cats[0]?fmt(cats[0].valor):'—'}</div>
+        <button class="btn" onclick="salvarInscricao()">✅ Lançar Inscrição</button>
+        `}
+      ` : `
+        ${tiers.length===0 ? `<div class="vazio">Nenhum tier de patrocínio cadastrado ainda. Peça pro admin cadastrar em Configurações.</div>` : `
+        <div class="field-group"><label>Tier de Patrocínio</label>
+          <select id="vTier" onchange="atualizarPreviewVenda()">
+            ${tiers.map(t=>`<option value="${t.id}">${esc(t.nome)} — ${fmt(t.valor)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field-group"><label>Empresa</label><input id="vEmpresa" placeholder="Nome da empresa patrocinadora"></div>
+        <div class="field-group"><label>Contato</label><input id="vContatoPatr" placeholder="Nome + telefone/e-mail do contato"></div>
+        <div class="valor-preview" id="vPreview">Valor da cota: ${tiers[0]?fmt(tiers[0].valor):'—'}</div>
+        <button class="btn" onclick="salvarPatrocinio()">✅ Lançar Patrocínio</button>
+        `}
+      `}
+    </div>
+  `;
+}
+function setTipoVenda(t){ S.tipoVenda=t; renderConteudo(); }
+function atualizarPreviewVenda(){
+  const prev = document.getElementById('vPreview');
+  if(S.tipoVenda==='inscricao'){
+    const cat = S.categorias[document.getElementById('vCategoria').value];
+    prev.textContent = 'Valor da inscrição: '+(cat?fmt(cat.valor):'—');
+  }else{
+    const t = S.tiers[document.getElementById('vTier').value];
+    prev.textContent = 'Valor da cota: '+(t?fmt(t.valor):'—');
+  }
+}
+function salvarInscricao(){
+  const catId = document.getElementById('vCategoria').value;
+  const cat = S.categorias[catId];
+  const j1 = document.getElementById('vJogador1').value.trim();
+  const j2 = document.getElementById('vJogador2').value.trim();
+  const contato = document.getElementById('vContato').value.trim();
+  if(!cat) return toast('Selecione uma categoria');
+  if(!j1 || !j2) return toast('Preencha os dois nomes da dupla');
+  const u = usuarioAtualObj();
+  REF.inscricoes.push({
+    categoriaId: catId, categoriaNome: cat.nome, valor: Number(cat.valor)||0,
+    jogador1: j1, jogador2: j2, contato: contato||null,
+    vendedorId: S.usuarioAtual, vendedorNome: u.nome,
+    criadoEm: Date.now(), status: 'pendente'
+  }).then(()=>{ toast('Inscrição lançada! Aguardando confirmação do financeiro.'); mudarTab('resultado'); });
+}
+function salvarPatrocinio(){
+  const tierId = document.getElementById('vTier').value;
+  const t = S.tiers[tierId];
+  const empresa = document.getElementById('vEmpresa').value.trim();
+  const contato = document.getElementById('vContatoPatr').value.trim();
+  if(!t) return toast('Selecione um tier');
+  if(!empresa) return toast('Informe o nome da empresa');
+  const u = usuarioAtualObj();
+  REF.patrocinios.push({
+    tierId: tierId, tierNome: t.nome, valor: Number(t.valor)||0,
+    empresa: empresa, contato: contato||null,
+    vendedorId: S.usuarioAtual, vendedorNome: u.nome,
+    criadoEm: Date.now(), status: 'pendente'
+  }).then(()=>{ toast('Patrocínio lançado! Aguardando confirmação do financeiro.'); mudarTab('resultado'); });
+}
+
+/* ═══════════════════════ 2. CHECKLIST ═══════════════════════ */
+const GRUPOS_PADRAO = ['Estrutura & Logística','Arbitragem','Comercial & Patrocínio','Marketing & Comunicação','Operação nos Dias do Evento'];
+function gruposExistentes(){
+  const set = new Set(GRUPOS_PADRAO);
+  Object.values(S.tarefas||{}).forEach(t=>{ if(t.grupo) set.add(t.grupo); });
+  return [...set];
+}
+function renderChecklist(c){
+  const grupos = gruposExistentes();
+  const usuariosOpts = listaAtivos(S.usuarios).sort((a,b)=>a.nome.localeCompare(b.nome));
+  const itens = Object.entries(S.tarefas||{}).map(([id,t])=>({id,...t}));
+  c.innerHTML = `
+    <h2 class="titulo-secao">✅ Checklist do Evento
+      <span><button class="btn-outline btn-sm" onclick="abrirModalGrupo()">+ Grupo</button> <button class="btn btn-sm" onclick="abrirModalTarefa()">+ Tarefa</button></span>
+    </h2>
+    <div class="sub-secao">Visível pra todo o time em tempo real. Clique na bolinha pra avançar o status.</div>
+    <div id="gruposWrap"></div>
+  `;
+  const wrap = document.getElementById('gruposWrap');
+  if(grupos.length===0){ wrap.innerHTML = `<div class="vazio">Nenhum grupo ainda. Clique em "+ Grupo" pra começar.</div>`; return; }
+  wrap.innerHTML = grupos.map(g=>{
+    const doGrupo = itens.filter(t=>t.grupo===g).sort((a,b)=>(a.ordem||0)-(b.ordem||0));
+    const feitas = doGrupo.filter(t=>t.status==='concluida').length;
+    return `
+    <details class="rotina-grupo" open>
+      <summary>
+        <div class="grupo-titulo">📁 ${esc(g)}</div>
+        <div class="grupo-progresso">${feitas}/${doGrupo.length}</div>
+      </summary>
+      <div class="grupo-itens">
+        ${doGrupo.length===0 ? `<div class="vazio" style="padding:1rem">Sem tarefas neste grupo ainda.</div>` :
+          doGrupo.map((t,idx)=>renderItemTarefa(t, doGrupo, idx, usuariosOpts)).join('')}
+      </div>
+    </details>`;
+  }).join('');
+}
+function renderItemTarefa(t, doGrupo, idx, usuariosOpts){
+  const resp = t.responsavel ? (S.usuarios[t.responsavel]||{}).nome : null;
+  return `
+    <div class="item-tarefa ${t.status==='concluida'?'concluida':''} ${t.status==='em-andamento'?'em-andamento':''}">
+      <div class="item-check ${t.status||''}" onclick="ciclarStatusTarefa('${t.id}','${t.status||'a-fazer'}')"></div>
+      <div class="item-corpo">
+        <div class="item-desc ${t.status==='concluida'?'concluida':''}">${esc(t.desc)}</div>
+        <div class="item-meta">${resp?('👤 '+esc(resp)):'sem responsável'}${t.status==='em-andamento'?' · em andamento':''}</div>
+      </div>
+      <div class="item-acoes">
+        <button class="btn-icon" title="Mover pra cima" onclick="moverTarefa('${t.id}', ${idx}, -1, '${esc(t.grupo).replace(/'/g,"\\'")}')" ${idx===0?'disabled':''}>▲</button>
+        <button class="btn-icon" title="Mover pra baixo" onclick="moverTarefa('${t.id}', ${idx}, 1, '${esc(t.grupo).replace(/'/g,"\\'")}')" ${idx===doGrupo.length-1?'disabled':''}>▼</button>
+        <button class="btn-icon" title="Editar" onclick="abrirModalTarefa('${t.id}')">✎</button>
+        <button class="btn-icon" title="Excluir" onclick="excluirTarefa('${t.id}')">🗑</button>
+      </div>
+    </div>`;
+}
+function ciclarStatusTarefa(id, atual){
+  const ordem = {'a-fazer':'em-andamento', 'em-andamento':'concluida', 'concluida':'a-fazer'};
+  REF.tarefas.child(id).update({status: ordem[atual]||'a-fazer'});
+}
+function moverTarefa(id, idx, dir, grupo){
+  const doGrupo = Object.entries(S.tarefas||{}).map(([tid,t])=>({id:tid,...t})).filter(t=>t.grupo===grupo).sort((a,b)=>(a.ordem||0)-(b.ordem||0));
+  const alvo = idx+dir;
+  if(alvo<0 || alvo>=doGrupo.length) return;
+  const a = doGrupo[idx], b = doGrupo[alvo];
+  const upd = {};
+  upd['/'+a.id+'/ordem'] = alvo;
+  upd['/'+b.id+'/ordem'] = idx;
+  REF.tarefas.update(upd);
+}
+function excluirTarefa(id){ if(confirm('Excluir esta tarefa?')) REF.tarefas.child(id).remove(); }
+function abrirModalGrupo(){ document.getElementById('fgNome').value=''; abrirModal('modalGrupo'); }
+function salvarGrupo(){
+  const nome = document.getElementById('fgNome').value.trim();
+  if(!nome) return toast('Digite um nome de grupo');
+  // grupo só existe de fato quando tem alguma tarefa; abrimos direto o modal de tarefa pré-preenchido
+  fecharModal('modalGrupo');
+  abrirModalTarefa(null, nome);
+}
+function abrirModalTarefa(id, grupoPreSel){
+  const grupos = gruposExistentes();
+  const sel = document.getElementById('ftGrupo');
+  sel.innerHTML = grupos.map(g=>`<option value="${esc(g)}">${esc(g)}</option>`).join('');
+  const selResp = document.getElementById('ftResponsavel');
+  selResp.innerHTML = '<option value="">— sem responsável —</option>' + listaAtivos(S.usuarios).sort((a,b)=>a.nome.localeCompare(b.nome)).map(u=>`<option value="${u.id}">${esc(u.nome)}</option>`).join('');
+  if(id){
+    const t = S.tarefas[id];
+    document.getElementById('modalTarefaTitulo').textContent = 'Editar tarefa';
+    document.getElementById('ftDesc').value = t.desc||'';
+    sel.value = t.grupo||grupos[0];
+    selResp.value = t.responsavel||'';
+    S.editando = {tipo:'tarefa', id};
+  }else{
+    document.getElementById('modalTarefaTitulo').textContent = 'Nova tarefa';
+    document.getElementById('ftDesc').value = '';
+    if(grupoPreSel) sel.value = grupoPreSel;
+    selResp.value = '';
+    S.editando = {tipo:'tarefa', id:null};
+  }
+  abrirModal('modalTarefa');
+}
+function salvarTarefa(){
+  const desc = document.getElementById('ftDesc').value.trim();
+  const grupo = document.getElementById('ftGrupo').value;
+  const responsavel = document.getElementById('ftResponsavel').value || null;
+  if(!desc) return toast('Descreva a tarefa');
+  const u = usuarioAtualObj();
+  if(S.editando && S.editando.id){
+    REF.tarefas.child(S.editando.id).update({desc, grupo, responsavel});
+  }else{
+    const doGrupo = Object.values(S.tarefas||{}).filter(t=>t.grupo===grupo);
+    REF.tarefas.push({desc, grupo, responsavel, status:'a-fazer', ordem: doGrupo.length, criadoPor: u.nome||S.usuarioAtual, criadoEm: Date.now()});
+  }
+  fecharModal('modalTarefa');
+}
+
+/* ═══════════════════════ 3. MEU RESULTADO ═══════════════════════ */
+function minhasVendas(){
+  const ins = Object.entries(S.inscricoes||{}).filter(([id,v])=>v.vendedorId===S.usuarioAtual).map(([id,v])=>({id,tipo:'inscricao',...v}));
+  const pat = Object.entries(S.patrocinios||{}).filter(([id,v])=>v.vendedorId===S.usuarioAtual).map(([id,v])=>({id,tipo:'patrocinio',...v}));
+  return [...ins,...pat].sort((a,b)=>b.criadoEm-a.criadoEm);
+}
+function renderMeuResultado(c){
+  const minhas = minhasVendas();
+  const confirmadas = minhas.filter(v=>v.status==='confirmado');
+  const pendentes = minhas.filter(v=>v.status==='pendente');
+  const vendidoConfirmado = confirmadas.reduce((s,v)=>s+Number(v.valor||0),0);
+  const vendidoPendente = pendentes.reduce((s,v)=>s+Number(v.valor||0),0);
+  const comissaoConfirmada = confirmadas.reduce((s,v)=>s+Number(v.comissaoValor||0),0);
+  const comissaoPendenteProjetada = pendentes.reduce((s,v)=>s+Number(v.valor||0)*(S.config.comissaoPercentual/100),0);
+  c.innerHTML = `
+    <h2 class="titulo-secao">📊 Meu Resultado</h2>
+    <div class="metric-grid">
+      <div class="metric-card"><div class="metric-label">Vendido confirmado</div><div class="metric-valor green">${fmt(vendidoConfirmado)}</div></div>
+      <div class="metric-card"><div class="metric-label">Vendido pendente</div><div class="metric-valor muted">${fmt(vendidoPendente)}</div></div>
+      <div class="metric-card"><div class="metric-label">Comissão confirmada</div><div class="metric-valor gold">${fmt(comissaoConfirmada)}</div></div>
+      <div class="metric-card"><div class="metric-label">Comissão pendente (est.)</div><div class="metric-valor muted">${fmt(comissaoPendenteProjetada)}</div></div>
+      <div class="metric-card"><div class="metric-label">Duplas + Patrocínios</div><div class="metric-valor">${minhas.length}</div></div>
+    </div>
+    <h3 style="font-size:15px;margin-bottom:10px;color:var(--muted)">Minhas vendas</h3>
+    <div class="lista-vendas">
+      ${minhas.length===0 ? `<div class="vazio">Você ainda não lançou nenhuma venda. Vá em "Lançar Venda".</div>` :
+        minhas.map(v=>renderVendaCard(v,false)).join('')}
+    </div>
+  `;
+}
+function renderVendaCard(v, comAcoes){
+  const titulo = v.tipo==='inscricao' ? `🎾 ${esc(v.jogador1)} & ${esc(v.jogador2)} — ${esc(v.categoriaNome)}` : `🤝 ${esc(v.empresa)} — ${esc(v.tierNome)}`;
+  const meta = [`por ${esc(v.vendedorNome)}`, fmtDataHora(v.criadoEm)];
+  if(v.status==='confirmado') meta.push(`comissão ${fmt(v.comissaoValor)}`);
+  return `
+    <div class="venda-card ${v.status}">
+      <div class="venda-corpo">
+        <div class="venda-titulo">${titulo}</div>
+        <div class="venda-meta">${meta.map(m=>`<span>${m}</span>`).join('')}</div>
+      </div>
+      <span class="status-badge ${v.status}">${v.status==='pendente'?'Pendente':v.status==='confirmado'?'Confirmado':'Cancelado'}</span>
+      <div class="venda-valor">${fmt(v.valor)}</div>
+      ${comAcoes && v.status==='pendente' ? `
+        <div class="venda-acoes">
+          <button class="btn-green btn-sm" onclick="confirmarVenda('${v.tipo}','${v.id}')">✅ Confirmar</button>
+          <button class="btn-danger btn-sm" onclick="cancelarVenda('${v.tipo}','${v.id}')">✕ Cancelar</button>
+        </div>` : ''}
+    </div>`;
+}
+
+/* ═══════════════════════ 4. CONFIRMAR PAGAMENTOS ═══════════════════════ */
+function todasVendas(){
+  const ins = Object.entries(S.inscricoes||{}).map(([id,v])=>({id,tipo:'inscricao',...v}));
+  const pat = Object.entries(S.patrocinios||{}).map(([id,v])=>({id,tipo:'patrocinio',...v}));
+  return [...ins,...pat].sort((a,b)=>b.criadoEm-a.criadoEm);
+}
+function renderConfirmarPagamentos(c){
+  const pendentes = todasVendas().filter(v=>v.status==='pendente');
+  c.innerHTML = `
+    <h2 class="titulo-secao">💵 Confirmar Pagamentos</h2>
+    <div class="sub-secao">Confirme só depois que o pagamento realmente caiu. A comissão de ${S.config.comissaoPercentual}% é travada no momento da confirmação.</div>
+    <div class="lista-vendas">
+      ${pendentes.length===0 ? `<div class="vazio">Nenhuma venda pendente no momento 🎉</div>` :
+        pendentes.map(v=>renderVendaCard(v,true)).join('')}
+    </div>
+  `;
+}
+function confirmarVenda(tipo, id){
+  const ref = tipo==='inscricao' ? REF.inscricoes : REF.patrocinios;
+  const registro = (tipo==='inscricao'?S.inscricoes:S.patrocinios)[id];
+  if(!registro) return;
+  const pct = S.config.comissaoPercentual||10;
+  const comissaoValor = +(Number(registro.valor||0) * pct/100).toFixed(2);
+  const u = usuarioAtualObj();
+  ref.child(id).update({
+    status: 'confirmado', confirmadoPor: S.usuarioAtual, confirmadoPorNome: u.nome,
+    confirmadoEm: Date.now(), comissaoPercentual: pct, comissaoValor
+  }).then(()=>toast('Pagamento confirmado — comissão gravada.'));
+}
+function cancelarVenda(tipo, id){
+  if(!confirm('Cancelar esta venda? Ela vai sair do ranking e do resultado do vendedor.')) return;
+  const ref = tipo==='inscricao' ? REF.inscricoes : REF.patrocinios;
+  const u = usuarioAtualObj();
+  ref.child(id).update({status:'cancelado', canceladoPor:S.usuarioAtual, canceladoPorNome:u.nome, canceladoEm:Date.now()}).then(()=>toast('Venda cancelada.'));
+}
+
+/* ═══════════════════════ 5. VISÃO GERAL ═══════════════════════ */
+function renderVisaoGeral(c){
+  const todas = todasVendas();
+  const confirmadas = todas.filter(v=>v.status==='confirmado');
+  const pendentes = todas.filter(v=>v.status==='pendente');
+  const totalConfirmado = confirmadas.reduce((s,v)=>s+Number(v.valor||0),0);
+  const totalPendente = pendentes.reduce((s,v)=>s+Number(v.valor||0),0);
+  const totalComissao = confirmadas.reduce((s,v)=>s+Number(v.comissaoValor||0),0);
+  const ins = confirmadas.filter(v=>v.tipo==='inscricao');
+  const pat = confirmadas.filter(v=>v.tipo==='patrocinio');
+
+  const porCategoria = {};
+  ins.forEach(v=>{ porCategoria[v.categoriaNome] = (porCategoria[v.categoriaNome]||0) + Number(v.valor||0); });
+  const porTier = {};
+  pat.forEach(v=>{ porTier[v.tierNome] = (porTier[v.tierNome]||0) + Number(v.valor||0); });
+
+  c.innerHTML = `
+    <h2 class="titulo-secao">📈 Visão Geral do Torneio</h2>
+    <div class="metric-grid">
+      <div class="metric-card"><div class="metric-label">Arrecadado confirmado</div><div class="metric-valor green">${fmt(totalConfirmado)}</div></div>
+      <div class="metric-card"><div class="metric-label">Em pendente</div><div class="metric-valor muted">${fmt(totalPendente)}</div></div>
+      <div class="metric-card"><div class="metric-label">Comissão total paga</div><div class="metric-valor gold">${fmt(totalComissao)}</div></div>
+      <div class="metric-card"><div class="metric-label">Duplas confirmadas</div><div class="metric-valor">${ins.length}</div></div>
+      <div class="metric-card"><div class="metric-label">Patrocínios confirmados</div><div class="metric-valor">${pat.length}</div></div>
+    </div>
+    <h3 style="font-size:15px;margin-bottom:10px;color:var(--muted)">Por categoria (confirmado)</h3>
+    <div class="config-lista">
+      ${Object.keys(porCategoria).length===0 ? `<div class="vazio">Sem dados ainda.</div>` :
+        Object.entries(porCategoria).map(([n,v])=>`<div class="config-item"><div class="config-nome">${esc(n)}</div><div class="config-valor">${fmt(v)}</div></div>`).join('')}
+    </div>
+    <h3 style="font-size:15px;margin:1.25rem 0 10px;color:var(--muted)">Por tier de patrocínio (confirmado)</h3>
+    <div class="config-lista">
+      ${Object.keys(porTier).length===0 ? `<div class="vazio">Sem dados ainda.</div>` :
+        Object.entries(porTier).map(([n,v])=>`<div class="config-item"><div class="config-nome">${esc(n)}</div><div class="config-valor">${fmt(v)}</div></div>`).join('')}
+    </div>
+  `;
+}
+
+/* ═══════════════════════ 6. RANKING ═══════════════════════ */
+function renderRanking(c){
+  const todas = todasVendas().filter(v=>v.status!=='cancelado');
+  const porVendedor = {};
+  todas.forEach(v=>{
+    if(!porVendedor[v.vendedorId]) porVendedor[v.vendedorId] = {nome:v.vendedorNome, vendido:0, confirmado:0, comissao:0, qtd:0};
+    const r = porVendedor[v.vendedorId];
+    r.qtd++;
+    r.vendido += Number(v.valor||0);
+    if(v.status==='confirmado'){ r.confirmado += Number(v.valor||0); r.comissao += Number(v.comissaoValor||0); }
+  });
+  const ranking = Object.values(porVendedor).sort((a,b)=>b.confirmado-a.confirmado);
+  c.innerHTML = `
+    <h2 class="titulo-secao">🏆 Ranking do Time</h2>
+    <div class="tabela-wrap"><table>
+      <thead><tr><th>#</th><th>Vendedor(a)</th><th>Vendas</th><th>Confirmado</th><th>Comissão</th></tr></thead>
+      <tbody>
+        ${ranking.length===0 ? `<tr><td colspan="5" style="text-align:center;color:var(--muted2)">Sem vendas ainda</td></tr>` :
+          ranking.map((r,i)=>`<tr><td>${i+1}º</td><td>${esc(r.nome)}</td><td>${r.qtd}</td><td>${fmt(r.confirmado)}</td><td style="color:var(--gold);font-weight:700">${fmt(r.comissao)}</td></tr>`).join('')}
+      </tbody>
+    </table></div>
+  `;
+}
+
+/* ═══════════════════════ 7. TODAS AS VENDAS ═══════════════════════ */
+function renderTodasVendas(c){
+  const todas = todasVendas();
+  const f = S.filtroVendas;
+  const filtradas = f==='todos' ? todas : todas.filter(v=>v.status===f);
+  c.innerHTML = `
+    <h2 class="titulo-secao">📋 Todas as Vendas</h2>
+    <div class="filtros">
+      ${['todos','pendente','confirmado','cancelado'].map(k=>`<div class="filtro-btn ${f===k?'ativo':''}" onclick="setFiltroVendas('${k}')">${k==='todos'?'Todos':k[0].toUpperCase()+k.slice(1)}</div>`).join('')}
+    </div>
+    <div class="lista-vendas">
+      ${filtradas.length===0 ? `<div class="vazio">Nenhuma venda nesse filtro.</div>` : filtradas.map(v=>renderVendaCard(v,false)).join('')}
+    </div>
+  `;
+}
+function setFiltroVendas(k){ S.filtroVendas=k; renderConteudo(); }
+
+/* ═══════════════════════ 8. CONFIGURAÇÕES ═══════════════════════ */
+function renderConfiguracoes(c){
+  const cats = Object.entries(S.categorias||{}).map(([id,v])=>({id,...v})).sort((a,b)=>(a.ordem||0)-(b.ordem||0));
+  const tiers = Object.entries(S.tiers||{}).map(([id,v])=>({id,...v})).sort((a,b)=>(a.ordem||0)-(b.ordem||0));
+  const usuarios = Object.entries(S.usuarios||{}).map(([id,v])=>({id,...v})).sort((a,b)=>a.nome.localeCompare(b.nome));
+  c.innerHTML = `
+    <h2 class="titulo-secao">⚙️ Configurações</h2>
+
+    <div class="field-group" style="max-width:280px;margin-bottom:1.5rem">
+      <label>Comissão global (%)</label>
+      <input type="number" id="cfgComissao" value="${S.config.comissaoPercentual}" min="0" max="100" step="0.5" onchange="salvarComissaoGlobal()">
+    </div>
+
+    <h3 style="font-size:15px;margin-bottom:10px;color:var(--muted)">Categorias do torneio <button class="btn-outline btn-sm" onclick="abrirModalCategoria()">+ Nova</button></h3>
+    <div class="config-lista">
+      ${cats.length===0 ? `<div class="vazio">Nenhuma categoria cadastrada.</div>` : cats.map(cat=>`
+        <div class="config-item ${cat.ativo===false?'inativo':''}">
+          <div class="config-nome">${esc(cat.nome)}</div>
+          <div class="config-valor">${fmt(cat.valor)}</div>
+          <button class="btn-icon" onclick="abrirModalCategoria('${cat.id}')">✎</button>
+          <button class="btn-icon" onclick="toggleAtivo('categorias','${cat.id}',${cat.ativo===false})">${cat.ativo===false?'↩':'🚫'}</button>
+        </div>`).join('')}
+    </div>
+
+    <h3 style="font-size:15px;margin:1.5rem 0 10px;color:var(--muted)">Tiers de patrocínio <button class="btn-outline btn-sm" onclick="abrirModalTier()">+ Novo</button></h3>
+    <div class="config-lista">
+      ${tiers.length===0 ? `<div class="vazio">Nenhum tier cadastrado.</div>` : tiers.map(t=>`
+        <div class="config-item ${t.ativo===false?'inativo':''}">
+          <div class="config-nome">${esc(t.nome)}</div>
+          <div class="config-valor">${fmt(t.valor)}</div>
+          <button class="btn-icon" onclick="abrirModalTier('${t.id}')">✎</button>
+          <button class="btn-icon" onclick="toggleAtivo('tiers','${t.id}',${t.ativo===false})">${t.ativo===false?'↩':'🚫'}</button>
+        </div>`).join('')}
+    </div>
+
+    <h3 style="font-size:15px;margin:1.5rem 0 10px;color:var(--muted)">Usuários (time) <button class="btn-outline btn-sm" onclick="abrirModalUsuario()">+ Novo</button></h3>
+    <div class="config-lista">
+      ${usuarios.length===0 ? `<div class="vazio">Nenhum usuário cadastrado.</div>` : usuarios.map(u=>`
+        <div class="config-item ${u.ativo===false?'inativo':''}">
+          <div class="config-nome">${esc(u.nome)} ${u.isAdmin?'<span class="badge-admin">ADMIN</span>':''}${u.isFinanceiro?'<span class="badge-admin">FINANCEIRO</span>':''}</div>
+          <button class="btn-icon" onclick="abrirModalUsuario('${u.id}')">✎</button>
+          <button class="btn-icon" onclick="toggleAtivo('usuarios','${u.id}',${u.ativo===false})">${u.ativo===false?'↩':'🚫'}</button>
+        </div>`).join('')}
+    </div>
+  `;
+}
+function salvarComissaoGlobal(){
+  const v = Number(document.getElementById('cfgComissao').value);
+  REF.config.update({comissaoPercentual: v}).then(()=>toast('Comissão global atualizada para '+v+'%.'));
+}
+function toggleAtivo(colecao, id, novoAtivo){
+  const ref = colecao==='categorias'?REF.categorias : colecao==='tiers'?REF.tiers : REF.usuarios;
+  ref.child(id).update({ativo: novoAtivo});
+}
+
+/* categoria */
+function abrirModalCategoria(id){
+  if(id){
+    const cat = S.categorias[id];
+    document.getElementById('modalCategoriaTitulo').textContent='Editar categoria';
+    document.getElementById('fcNome').value = cat.nome; document.getElementById('fcValor').value = cat.valor;
+    S.editando = {tipo:'categoria', id};
+  }else{
+    document.getElementById('modalCategoriaTitulo').textContent='Nova categoria';
+    document.getElementById('fcNome').value=''; document.getElementById('fcValor').value='';
+    S.editando = {tipo:'categoria', id:null};
+  }
+  abrirModal('modalCategoria');
+}
+function salvarCategoria(){
+  const nome = document.getElementById('fcNome').value.trim();
+  const valor = Number(document.getElementById('fcValor').value);
+  if(!nome) return toast('Digite o nome da categoria');
+  if(S.editando && S.editando.id){
+    REF.categorias.child(S.editando.id).update({nome, valor});
+  }else{
+    const ordem = Object.keys(S.categorias||{}).length;
+    REF.categorias.push({nome, valor, ativo:true, ordem});
+  }
+  fecharModal('modalCategoria');
+}
+
+/* tier */
+function abrirModalTier(id){
+  if(id){
+    const t = S.tiers[id];
+    document.getElementById('modalTierTitulo').textContent='Editar tier';
+    document.getElementById('ftrNome').value = t.nome; document.getElementById('ftrValor').value = t.valor;
+    S.editando = {tipo:'tier', id};
+  }else{
+    document.getElementById('modalTierTitulo').textContent='Novo tier';
+    document.getElementById('ftrNome').value=''; document.getElementById('ftrValor').value='';
+    S.editando = {tipo:'tier', id:null};
+  }
+  abrirModal('modalTier');
+}
+function salvarTier(){
+  const nome = document.getElementById('ftrNome').value.trim();
+  const valor = Number(document.getElementById('ftrValor').value);
+  if(!nome) return toast('Digite o nome do tier');
+  if(S.editando && S.editando.id){
+    REF.tiers.child(S.editando.id).update({nome, valor});
+  }else{
+    const ordem = Object.keys(S.tiers||{}).length;
+    REF.tiers.push({nome, valor, ativo:true, ordem});
+  }
+  fecharModal('modalTier');
+}
+
+/* usuário */
+function abrirModalUsuario(id){
+  if(id){
+    const u = S.usuarios[id];
+    document.getElementById('modalUsuarioTitulo').textContent='Editar usuário';
+    document.getElementById('fuNome').value = u.nome; document.getElementById('fuCargo').value = u.cargo||'';
+    document.getElementById('fuPin').value = u.pin||''; document.getElementById('fuAdmin').checked = !!u.isAdmin;
+    document.getElementById('fuFinanceiro').checked = !!u.isFinanceiro;
+    S.editando = {tipo:'usuario', id};
+  }else{
+    document.getElementById('modalUsuarioTitulo').textContent='Novo usuário';
+    document.getElementById('fuNome').value=''; document.getElementById('fuCargo').value='';
+    document.getElementById('fuPin').value=''; document.getElementById('fuAdmin').checked=false; document.getElementById('fuFinanceiro').checked=false;
+    S.editando = {tipo:'usuario', id:null};
+  }
+  abrirModal('modalUsuario');
+}
+function salvarUsuario(){
+  const nome = document.getElementById('fuNome').value.trim();
+  const cargo = document.getElementById('fuCargo').value.trim();
+  const pin = document.getElementById('fuPin').value.trim();
+  const isAdmin = document.getElementById('fuAdmin').checked;
+  const isFinanceiro = document.getElementById('fuFinanceiro').checked;
+  if(!nome) return toast('Digite o nome');
+  if(!/^\d{4}$/.test(pin)) return toast('PIN precisa ter exatamente 4 dígitos');
+  const dados = {nome, cargo: cargo||null, pin, isAdmin, isFinanceiro, ativo:true};
+  if(S.editando && S.editando.id){
+    REF.usuarios.child(S.editando.id).update(dados);
+  }else{
+    REF.usuarios.push(dados);
+  }
+  fecharModal('modalUsuario');
+}
+
+/* ═══════════════════════ INIT ═══════════════════════ */
+window.addEventListener('DOMContentLoaded', ()=>{
+  initListeners();
+  const savedUid = localStorage.getItem('torneio_uid');
+  if(savedUid){
+    // aguarda os usuários carregarem antes de tentar restaurar sessão
+    const check = setInterval(()=>{
+      if(Object.keys(S.usuarios).length>0 || !db){
+        clearInterval(check);
+        if(S.usuarios[savedUid]){ S.usuarioAtual = savedUid; mostrarApp(); }
+      }
+    }, 200);
+    setTimeout(()=>clearInterval(check), 4000);
+  }
+});
+</script>
+</body>
+</html>
