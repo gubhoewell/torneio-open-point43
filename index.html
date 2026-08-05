@@ -20,6 +20,9 @@
 
   /* ── TELA DE SELEÇÃO / LOGIN ── */
   #tela-selecao{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:2rem 1.25rem}
+  #tela-publica{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;min-height:100vh;padding:2.5rem 1.25rem}
+  .publica-sucesso{background:var(--greensoft);border:1px solid var(--green);border-radius:var(--r);padding:1.5rem;text-align:center;color:var(--text)}
+  .publica-sucesso .grande{font-size:32px;margin-bottom:8px}
   .logo{font-size:13px;letter-spacing:.15em;color:var(--gold);font-weight:700;margin-bottom:6px;text-align:center}
   .logo-titulo{font-size:22px;font-weight:800;color:#fff;margin-bottom:2rem;text-align:center}
   .grid-usuarios{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;max-width:640px;width:100%}
@@ -65,6 +68,7 @@
   .tab{padding:9px 13px;font-size:13.5px;color:var(--muted2);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;border-radius:6px 6px 0 0;font-weight:500}
   .tab:hover{color:var(--text)}
   .tab.ativo{color:var(--gold);border-bottom-color:var(--gold);background:#1c1908}
+  .badge-notif{background:var(--red);color:#fff;font-size:11px;font-weight:800;padding:1px 6px;border-radius:10px;margin-left:2px}
 
   .conteudo{padding:1.25rem 1rem 3rem;max-width:920px;margin:0 auto}
   h2.titulo-secao{font-size:19px;font-weight:800;margin-bottom:1rem;display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap}
@@ -190,6 +194,13 @@
   <div class="logo">POINT 43</div>
   <div class="logo-titulo">🎾 Torneio OPEN — quem é você?</div>
   <div class="grid-usuarios" id="gridUsuarios"></div>
+</div>
+
+<!-- TELA PÚBLICA DE INSCRIÇÃO (sem login, aberta via ?inscrever=1) -->
+<div id="tela-publica" style="display:none">
+  <div class="logo">POINT 43</div>
+  <div class="logo-titulo">🎾 Inscreva sua dupla — Torneio OPEN</div>
+  <div id="publicaConteudo" style="max-width:480px;width:100%"></div>
 </div>
 
 <!-- PIN MODAL -->
@@ -320,13 +331,18 @@ const REF = db ? {
   config: db.ref('config'),
   inscricoes: db.ref('inscricoes'),
   patrocinios: db.ref('patrocinios'),
-  tarefas: db.ref('tarefasEvento')
+  tarefas: db.ref('tarefasEvento'),
+  inscricoesPublicas: db.ref('inscricoesPublicas')
 } : {};
+
+/* Modo público: link sem login pra torcida/alunos se inscreverem sozinhos.
+   Ex: https://.../index.html?inscrever=1 — mostra só o formulário, sem o time. */
+const MODO_PUBLICO = new URLSearchParams(location.search).get('inscrever') === '1';
 
 /* ═══════════════════════ ESTADO ═══════════════════════ */
 const S = {
   usuarioAtual: null,
-  usuarios: {}, categorias: {}, tiers: {}, inscricoes: {}, patrocinios: {}, tarefas: {},
+  usuarios: {}, categorias: {}, tiers: {}, inscricoes: {}, patrocinios: {}, tarefas: {}, inscricoesPublicas: {},
   config: { comissaoPercentual: 10 },
   tabAtiva: 'venda',
   tipoVenda: 'inscricao',
@@ -348,17 +364,71 @@ function listaOrdenada(obj){ return listaAtivos(obj).sort((a,b)=>(a.ordem||0)-(b
 
 /* ═══════════════════════ LISTENERS FIREBASE ═══════════════════════ */
 function initListeners(){
-  renderSelecao();
+  if(MODO_PUBLICO){ renderTelaPublica(); } else { renderSelecao(); }
   if(!db) return;
-  REF.usuarios.on('value', s=>{ S.usuarios = s.val()||{}; renderSelecao(); if(S.usuarioAtual) renderConteudoSeAtivo(); });
-  REF.categorias.on('value', s=>{ S.categorias = s.val()||{}; renderConteudoSeAtivo(); });
+  REF.usuarios.on('value', s=>{ S.usuarios = s.val()||{}; if(!MODO_PUBLICO){ renderSelecao(); if(S.usuarioAtual) renderConteudoSeAtivo(); } });
+  REF.categorias.on('value', s=>{ S.categorias = s.val()||{}; renderConteudoSeAtivo(); if(MODO_PUBLICO) renderTelaPublica(); });
   REF.tiers.on('value', s=>{ S.tiers = s.val()||{}; renderConteudoSeAtivo(); });
   REF.config.on('value', s=>{ S.config = Object.assign({comissaoPercentual:10}, s.val()||{}); renderConteudoSeAtivo(); });
   REF.inscricoes.on('value', s=>{ S.inscricoes = s.val()||{}; renderConteudoSeAtivo(); });
   REF.patrocinios.on('value', s=>{ S.patrocinios = s.val()||{}; renderConteudoSeAtivo(); });
   REF.tarefas.on('value', s=>{ S.tarefas = s.val()||{}; renderConteudoSeAtivo(); });
+  REF.inscricoesPublicas.on('value', s=>{ S.inscricoesPublicas = s.val()||{}; renderConteudoSeAtivo(); });
 }
 function renderConteudoSeAtivo(){ if(document.getElementById('app').style.display==='block') renderConteudo(); }
+
+/* ═══════════════════════ TELA PÚBLICA (sem login) ═══════════════════════ */
+function renderTelaPublica(){
+  const wrap = document.getElementById('publicaConteudo');
+  if(!wrap || S.publicaEnviada) return;
+  const cats = listaOrdenada(S.categorias);
+  if(!db){ wrap.innerHTML = `<div class="selecao-vazio">Sistema em manutenção, tenta de novo mais tarde.</div>`; return; }
+  wrap.innerHTML = `
+    <div class="form-card">
+      ${cats.length===0 ? `<div class="vazio">Inscrições ainda não abertas — volta aqui em breve!</div>` : `
+      <div class="field-group"><label>Categoria desejada</label>
+        <select id="pubCategoria">
+          ${cats.map(cat=>`<option value="${cat.id}">${esc(cat.nome)} — ${fmt(cat.valor)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field-row">
+        <div class="field-group"><label>Jogador(a) 1 — nome</label><input id="pubJogador1" placeholder="Nome completo"></div>
+        <div class="field-group"><label>WhatsApp Jogador(a) 1</label><input id="pubWhats1" placeholder="(43) 9....." inputmode="tel"></div>
+      </div>
+      <div class="field-row">
+        <div class="field-group"><label>Jogador(a) 2 — nome</label><input id="pubJogador2" placeholder="Nome completo"></div>
+        <div class="field-group"><label>WhatsApp Jogador(a) 2</label><input id="pubWhats2" placeholder="(43) 9....." inputmode="tel"></div>
+      </div>
+      <div class="sub-secao" style="margin-top:-4px">Sua inscrição fica em análise até nossa equipe confirmar — você recebe retorno pelo WhatsApp.</div>
+      <button class="btn" style="width:100%;justify-content:center;margin-top:6px" onclick="salvarInscricaoPublica()">✅ Enviar inscrição</button>
+      `}
+    </div>
+  `;
+}
+function salvarInscricaoPublica(){
+  const catId = document.getElementById('pubCategoria').value;
+  const cat = S.categorias[catId];
+  const j1 = document.getElementById('pubJogador1').value.trim();
+  const w1 = document.getElementById('pubWhats1').value.trim();
+  const j2 = document.getElementById('pubJogador2').value.trim();
+  const w2 = document.getElementById('pubWhats2').value.trim();
+  if(!cat) return toast('Selecione uma categoria');
+  if(!j1 || !j2) return toast('Preencha os dois nomes da dupla');
+  if(!w1 || !w2) return toast('WhatsApp dos dois jogadores é obrigatório');
+  REF.inscricoesPublicas.push({
+    categoriaId: catId, categoriaNome: cat.nome, valor: Number(cat.valor)||0,
+    jogador1: j1, whatsapp1: w1, jogador2: j2, whatsapp2: w2,
+    criadoEm: Date.now(), status: 'aguardando'
+  }).then(()=>{
+    S.publicaEnviada = true;
+    document.getElementById('publicaConteudo').innerHTML = `
+      <div class="publica-sucesso">
+        <div class="grande">🎾✅</div>
+        <div style="font-weight:800;font-size:17px;margin-bottom:6px">Inscrição recebida!</div>
+        <div style="color:var(--muted)">A dupla ${esc(j1)} & ${esc(j2)} está em análise na categoria ${esc(cat.nome)}. Nossa equipe confirma pelo WhatsApp em breve.</div>
+      </div>`;
+  }).catch(()=>toast('Erro ao enviar — tenta de novo em instantes.'));
+}
 
 /* ═══════════════════════ LOGIN ═══════════════════════ */
 function renderSelecao(){
@@ -447,6 +517,7 @@ const TABS_BASE = [
 ];
 const TABS_ADMIN = [
   {id:'confirmar', label:'💵 Confirmar Pagtos'},
+  {id:'publicas', label:'📥 Inscrições Públicas'},
   {id:'checklist', label:'✅ Checklist'},
   {id:'geral', label:'📈 Visão Geral'},
   {id:'ranking', label:'🏆 Ranking'},
@@ -456,14 +527,19 @@ const TABS_ADMIN = [
 function tabsVisiveis(){
   let t = [...TABS_BASE];
   if(souFinanceiro()) t.push(TABS_ADMIN[0]); // confirmar pagamentos
-  if(souAdmin()) t.push(...TABS_ADMIN.slice(1)); // checklist + resto é só admin
+  if(souAdmin()) t.push(...TABS_ADMIN.slice(1)); // inscrições públicas + checklist + resto é só admin
   return t;
 }
+function qtdePublicasAguardando(){ return Object.values(S.inscricoesPublicas||{}).filter(p=>p.status==='aguardando').length; }
 function montarTabs(){
   // se o usuário perdeu acesso à aba ativa (ex: checklist deixou de ser pública), volta pra Lançar Venda
   if(!tabsVisiveis().some(t=>t.id===S.tabAtiva)) S.tabAtiva = 'venda';
   const nav = document.getElementById('tabsNav');
-  nav.innerHTML = tabsVisiveis().map(t=>`<div class="tab ${t.id===S.tabAtiva?'ativo':''}" onclick="mudarTab('${t.id}')">${t.label}</div>`).join('');
+  const qtd = qtdePublicasAguardando();
+  nav.innerHTML = tabsVisiveis().map(t=>{
+    const label = (t.id==='publicas' && qtd>0) ? `${t.label} <span class="badge-notif">${qtd}</span>` : t.label;
+    return `<div class="tab ${t.id===S.tabAtiva?'ativo':''}" onclick="mudarTab('${t.id}')">${label}</div>`;
+  }).join('');
 }
 function mudarTab(id){
   S.tabAtiva = id;
@@ -477,6 +553,7 @@ function renderConteudo(){
     case 'checklist': return renderChecklist(c);
     case 'resultado': return renderMeuResultado(c);
     case 'confirmar': return renderConfirmarPagamentos(c);
+    case 'publicas': return renderInscricoesPublicas(c);
     case 'geral': return renderVisaoGeral(c);
     case 'ranking': return renderRanking(c);
     case 'todas': return renderTodasVendas(c);
@@ -506,9 +583,12 @@ function renderLancarVenda(c){
         </div>
         <div class="field-row">
           <div class="field-group"><label>Jogador(a) 1</label><input id="vJogador1" placeholder="Nome completo"></div>
-          <div class="field-group"><label>Jogador(a) 2</label><input id="vJogador2" placeholder="Nome completo"></div>
+          <div class="field-group"><label>WhatsApp Jogador(a) 1</label><input id="vWhats1" placeholder="(43) 9....." inputmode="tel"></div>
         </div>
-        <div class="field-group"><label>Contato (WhatsApp, opcional)</label><input id="vContato" placeholder="(43) 9....."></div>
+        <div class="field-row">
+          <div class="field-group"><label>Jogador(a) 2</label><input id="vJogador2" placeholder="Nome completo"></div>
+          <div class="field-group"><label>WhatsApp Jogador(a) 2</label><input id="vWhats2" placeholder="(43) 9....." inputmode="tel"></div>
+        </div>
         <div class="valor-preview" id="vPreview">Valor da inscrição: ${cats[0]?fmt(cats[0].valor):'—'}</div>
         <button class="btn" onclick="salvarInscricao()">✅ Lançar Inscrição</button>
         `}
@@ -543,14 +623,16 @@ function salvarInscricao(){
   const catId = document.getElementById('vCategoria').value;
   const cat = S.categorias[catId];
   const j1 = document.getElementById('vJogador1').value.trim();
+  const w1 = document.getElementById('vWhats1').value.trim();
   const j2 = document.getElementById('vJogador2').value.trim();
-  const contato = document.getElementById('vContato').value.trim();
+  const w2 = document.getElementById('vWhats2').value.trim();
   if(!cat) return toast('Selecione uma categoria');
   if(!j1 || !j2) return toast('Preencha os dois nomes da dupla');
+  if(!w1 || !w2) return toast('WhatsApp dos dois jogadores é obrigatório');
   const u = usuarioAtualObj();
   REF.inscricoes.push({
     categoriaId: catId, categoriaNome: cat.nome, valor: Number(cat.valor)||0,
-    jogador1: j1, jogador2: j2, contato: contato||null,
+    jogador1: j1, whatsapp1: w1, jogador2: j2, whatsapp2: w2,
     vendedorId: S.usuarioAtual, vendedorNome: u.nome,
     criadoEm: Date.now(), status: 'pendente'
   }).then(()=>{ toast('Inscrição lançada! Aguardando confirmação do financeiro.'); mudarTab('resultado'); });
@@ -716,7 +798,8 @@ function renderMeuResultado(c){
 }
 function renderVendaCard(v, comAcoes){
   const titulo = v.tipo==='inscricao' ? `🎾 ${esc(v.jogador1)} & ${esc(v.jogador2)} — ${esc(v.categoriaNome)}` : `🤝 ${esc(v.empresa)} — ${esc(v.tierNome)}`;
-  const meta = [`por ${esc(v.vendedorNome)}`, fmtDataHora(v.criadoEm)];
+  const meta = [`por ${esc(v.vendedorNome||'—')}`, fmtDataHora(v.criadoEm)];
+  if(v.tipo==='inscricao' && (v.whatsapp1||v.whatsapp2)) meta.push(`📱 ${esc(v.whatsapp1||'—')} · ${esc(v.whatsapp2||'—')}`);
   if(v.status==='confirmado') meta.push(`comissão ${fmt(v.comissaoValor)}`);
   return `
     <div class="venda-card ${v.status}">
@@ -770,6 +853,62 @@ function cancelarVenda(tipo, id){
   ref.child(id).update({status:'cancelado', canceladoPor:S.usuarioAtual, canceladoPorNome:u.nome, canceladoEm:Date.now()}).then(()=>toast('Venda cancelada.'));
 }
 
+/* ═══════════════════════ 4B. INSCRIÇÕES PÚBLICAS (fila de aprovação) ═══════════════════════ */
+function renderInscricoesPublicas(c){
+  const filtro = S.filtroPublicas || 'aguardando';
+  const todas = Object.entries(S.inscricoesPublicas||{}).map(([id,v])=>({id,...v})).sort((a,b)=>b.criadoEm-a.criadoEm);
+  const lista = filtro==='todas' ? todas : todas.filter(p=>p.status===filtro);
+  c.innerHTML = `
+    <h2 class="titulo-secao">📥 Inscrições Públicas</h2>
+    <div class="sub-secao">Pedidos enviados pelo link público de inscrição (sem login). Aprovar cria a inscrição normal (pendente de pagamento); rejeitar descarta o pedido.</div>
+    <div class="filtros">
+      ${['aguardando','aprovado','rejeitado','todas'].map(k=>`<div class="filtro-btn ${filtro===k?'ativo':''}" onclick="setFiltroPublicas('${k}')">${k==='aguardando'?'Aguardando':k==='aprovado'?'Aprovadas':k==='rejeitado'?'Rejeitadas':'Todas'}</div>`).join('')}
+    </div>
+    <div class="lista-vendas">
+      ${lista.length===0 ? `<div class="vazio">Nenhum pedido nesse filtro.</div>` : lista.map(p=>renderCardPublica(p)).join('')}
+    </div>
+  `;
+}
+function renderCardPublica(p){
+  const meta = [`WhatsApp ${esc(p.whatsapp1)} · ${esc(p.whatsapp2)}`, fmtDataHora(p.criadoEm)];
+  const statusLabel = p.status==='aguardando'?'Aguardando':p.status==='aprovado'?'Aprovado':'Rejeitado';
+  const statusClasse = p.status==='aguardando'?'pendente':p.status==='aprovado'?'confirmado':'cancelado';
+  return `
+    <div class="venda-card ${statusClasse}">
+      <div class="venda-corpo">
+        <div class="venda-titulo">🎾 ${esc(p.jogador1)} & ${esc(p.jogador2)} — ${esc(p.categoriaNome)}</div>
+        <div class="venda-meta">${meta.map(m=>`<span>${m}</span>`).join('')}</div>
+      </div>
+      <span class="status-badge ${statusClasse}">${statusLabel}</span>
+      <div class="venda-valor">${fmt(p.valor)}</div>
+      ${p.status==='aguardando' ? `
+        <div class="venda-acoes">
+          <button class="btn-green btn-sm" onclick="aprovarInscricaoPublica('${p.id}')">✅ Aprovar</button>
+          <button class="btn-danger btn-sm" onclick="rejeitarInscricaoPublica('${p.id}')">✕ Rejeitar</button>
+        </div>` : ''}
+    </div>`;
+}
+function setFiltroPublicas(k){ S.filtroPublicas=k; renderConteudo(); }
+function aprovarInscricaoPublica(id){
+  const p = S.inscricoesPublicas[id];
+  if(!p) return;
+  const u = usuarioAtualObj();
+  // cria a inscrição de verdade, sem vendedor (veio direto do site) — segue o fluxo normal de pagamento pendente
+  REF.inscricoes.push({
+    categoriaId: p.categoriaId, categoriaNome: p.categoriaNome, valor: Number(p.valor)||0,
+    jogador1: p.jogador1, whatsapp1: p.whatsapp1, jogador2: p.jogador2, whatsapp2: p.whatsapp2,
+    vendedorId: null, vendedorNome: 'Inscrição pública (site)',
+    criadoEm: Date.now(), status: 'pendente', origemPublica: true
+  }).then(novaRef=>{
+    return REF.inscricoesPublicas.child(id).update({status:'aprovado', aprovadoPor:S.usuarioAtual, aprovadoPorNome:u.nome, aprovadoEm:Date.now(), inscricaoId:novaRef.key});
+  }).then(()=>toast('Aprovado! Já entrou como inscrição pendente de pagamento.'));
+}
+function rejeitarInscricaoPublica(id){
+  if(!confirm('Rejeitar este pedido de inscrição?')) return;
+  const u = usuarioAtualObj();
+  REF.inscricoesPublicas.child(id).update({status:'rejeitado', rejeitadoPor:S.usuarioAtual, rejeitadoPorNome:u.nome, rejeitadoEm:Date.now()}).then(()=>toast('Pedido rejeitado.'));
+}
+
 /* ═══════════════════════ 5. VISÃO GERAL ═══════════════════════ */
 function renderVisaoGeral(c){
   const todas = todasVendas();
@@ -810,7 +949,7 @@ function renderVisaoGeral(c){
 
 /* ═══════════════════════ 6. RANKING ═══════════════════════ */
 function renderRanking(c){
-  const todas = todasVendas().filter(v=>v.status!=='cancelado');
+  const todas = todasVendas().filter(v=>v.status!=='cancelado' && v.vendedorId); // sem inscrição pública (não tem vendedor)
   const porVendedor = {};
   todas.forEach(v=>{
     if(!porVendedor[v.vendedorId]) porVendedor[v.vendedorId] = {nome:v.vendedorNome, vendido:0, confirmado:0, comissao:0, qtd:0};
@@ -1077,6 +1216,12 @@ function seedDadosIniciais(){
 
 /* ═══════════════════════ INIT ═══════════════════════ */
 window.addEventListener('DOMContentLoaded', ()=>{
+  if(MODO_PUBLICO){
+    document.getElementById('tela-selecao').style.display = 'none';
+    document.getElementById('tela-publica').style.display = 'flex';
+    initListeners();
+    return;
+  }
   initListeners();
   const savedUid = localStorage.getItem('torneio_uid');
   if(savedUid){
