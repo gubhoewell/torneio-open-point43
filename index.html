@@ -267,6 +267,7 @@
   <div class="modal-box">
     <div class="modal-titulo"><span id="modalCategoriaTitulo">Nova categoria</span><button class="modal-fechar" onclick="fecharModal('modalCategoria')">✕</button></div>
     <div class="field-group"><label>Nome da categoria</label><input id="fcNome" placeholder="Ex: Dupla Mista Iniciante"></div>
+    <div class="field-group"><label>Horário (opcional)</label><input id="fcHorario" placeholder="Ex: Sex 14/08 · 18h"></div>
     <div class="field-group"><label>Premiação campeão (opcional)</label><input id="fcPremioCampeao" placeholder="Ex: R$ 600,00"></div>
     <div class="field-group"><label>Premiação vice (opcional)</label><input id="fcPremioVice" placeholder="Ex: R$ 200,00 ou Voucher R$200 BOUSSOLÉ"></div>
     <div class="sub-secao">O valor da inscrição não é mais por categoria — é por jogador(a), calculado automaticamente (1ª/2ª inscrição). Ajuste os valores em "Preços de Inscrição" logo acima da lista de categorias.</div>
@@ -422,7 +423,7 @@ function renderTelaPublica(){
       ${cats.length===0 ? `<div class="vazio">Inscrições ainda não abertas — volta aqui em breve!</div>` : `
       <div class="field-group"><label>Categoria desejada</label>
         <select id="pubCategoria" onchange="atualizarPreviewPublica()">
-          ${cats.map(cat=>`<option value="${cat.id}">${esc(cat.nome)}</option>`).join('')}
+          ${cats.map(cat=>`<option value="${cat.id}">${esc(cat.nome)}${cat.horario?' — '+esc(cat.horario):''}</option>`).join('')}
         </select>
       </div>
       <div class="sub-secao" id="pubPremio" style="margin-top:-8px"></div>
@@ -654,7 +655,7 @@ function renderLancarVenda(c){
         ${cats.length===0 ? `<div class="vazio">Nenhuma categoria cadastrada ainda. Peça pro admin cadastrar em Configurações.</div>` : `
         <div class="field-group"><label>Categoria</label>
           <select id="vCategoria" onchange="atualizarPreviewVenda()">
-            ${cats.map(cat=>`<option value="${cat.id}">${esc(cat.nome)}</option>`).join('')}
+            ${cats.map(cat=>`<option value="${cat.id}">${esc(cat.nome)}${cat.horario?' — '+esc(cat.horario):''}</option>`).join('')}
           </select>
         </div>
         <div class="sub-secao" id="vPremio" style="margin-top:-8px"></div>
@@ -1145,7 +1146,7 @@ function renderConfiguracoes(c){
     <div class="config-lista">
       ${cats.length===0 ? `<div class="vazio">Nenhuma categoria cadastrada.</div>` : cats.map(cat=>`
         <div class="config-item ${cat.ativo===false?'inativo':''}">
-          <div class="config-nome">${esc(cat.nome)}${cat.premioCampeao||cat.premioVice ? `<div style="font-size:12px;color:var(--muted2);font-weight:400;margin-top:2px">${cat.premioCampeao?'🥇 '+esc(cat.premioCampeao):''}${cat.premioCampeao&&cat.premioVice?' · ':''}${cat.premioVice?'🥈 '+esc(cat.premioVice):''}</div>` : ''}</div>
+          <div class="config-nome">${esc(cat.nome)}${cat.horario?` <span style="font-weight:400;color:var(--muted2);font-size:12px">· 🕐 ${esc(cat.horario)}</span>`:''}${cat.premioCampeao||cat.premioVice ? `<div style="font-size:12px;color:var(--muted2);font-weight:400;margin-top:2px">${cat.premioCampeao?'🥇 '+esc(cat.premioCampeao):''}${cat.premioCampeao&&cat.premioVice?' · ':''}${cat.premioVice?'🥈 '+esc(cat.premioVice):''}</div>` : ''}</div>
           <button class="btn-icon" onclick="abrirModalCategoria('${cat.id}')">✎</button>
           <button class="btn-icon" onclick="toggleAtivo('categorias','${cat.id}',${cat.ativo===false})">${cat.ativo===false?'↩':'🚫'}</button>
         </div>`).join('')}
@@ -1197,12 +1198,14 @@ function abrirModalCategoria(id){
     const cat = S.categorias[id];
     document.getElementById('modalCategoriaTitulo').textContent='Editar categoria';
     document.getElementById('fcNome').value = cat.nome;
+    document.getElementById('fcHorario').value = cat.horario||'';
     document.getElementById('fcPremioCampeao').value = cat.premioCampeao||'';
     document.getElementById('fcPremioVice').value = cat.premioVice||'';
     S.editando = {tipo:'categoria', id};
   }else{
     document.getElementById('modalCategoriaTitulo').textContent='Nova categoria';
     document.getElementById('fcNome').value='';
+    document.getElementById('fcHorario').value='';
     document.getElementById('fcPremioCampeao').value='';
     document.getElementById('fcPremioVice').value='';
     S.editando = {tipo:'categoria', id:null};
@@ -1211,14 +1214,15 @@ function abrirModalCategoria(id){
 }
 function salvarCategoria(){
   const nome = document.getElementById('fcNome').value.trim();
+  const horario = document.getElementById('fcHorario').value.trim();
   const premioCampeao = document.getElementById('fcPremioCampeao').value.trim();
   const premioVice = document.getElementById('fcPremioVice').value.trim();
   if(!nome) return toast('Digite o nome da categoria');
   if(S.editando && S.editando.id){
-    REF.categorias.child(S.editando.id).update({nome, premioCampeao: premioCampeao||null, premioVice: premioVice||null});
+    REF.categorias.child(S.editando.id).update({nome, horario: horario||null, premioCampeao: premioCampeao||null, premioVice: premioVice||null});
   }else{
     const ordem = Object.keys(S.categorias||{}).length;
-    REF.categorias.push({nome, premioCampeao: premioCampeao||null, premioVice: premioVice||null, ativo:true, ordem});
+    REF.categorias.push({nome, horario: horario||null, premioCampeao: premioCampeao||null, premioVice: premioVice||null, ativo:true, ordem});
   }
   fecharModal('modalCategoria');
 }
@@ -1317,14 +1321,14 @@ function seedDadosIniciais(){
   // Categorias da programação prévia (14-16/08). Preço não é mais por categoria — é por
   // jogador(a), configurado em config.precoPrimeiraInscricao/precoSegundaInscricao (abaixo).
   const categorias = {
-    seed_femab:    {nome:'Feminino A/B',   premioCampeao:'R$ 600,00', premioVice:'R$ 200,00', ativo:true, ordem:0},
-    seed_mascab:   {nome:'Masculino A/B',  premioCampeao:'R$ 600,00', premioVice:'R$ 200,00', ativo:true, ordem:1},
-    seed_femc:     {nome:'Feminino C',     premioCampeao:'R$ 500,00', premioVice:'R$ 150,00', ativo:true, ordem:2},
-    seed_mascc:    {nome:'Masculino C',    premioCampeao:'R$ 500,00', premioVice:'R$ 150,00', ativo:true, ordem:3},
-    seed_mascde:   {nome:'Masculino D/E',  premioCampeao:'R$ 400,00', premioVice:'R$ 100,00', ativo:true, ordem:4},
-    seed_femde:    {nome:'Feminino D/E',   premioCampeao:'R$ 400,00', premioVice:'R$ 100,00', ativo:true, ordem:5},
-    seed_mistade:  {nome:'Mista D/E',      premioCampeao:'R$ 250,00', premioVice:'Voucher R$ 200,00 BOUSSOLÉ para a dupla', ativo:true, ordem:6},
-    seed_mistaopen:{nome:'Mista Open',     premioCampeao:'R$ 300,00', premioVice:'Voucher R$ 200,00 ZUA para a dupla', ativo:true, ordem:7}
+    seed_femab:    {nome:'Feminino A/B',   horario:'Sex 14/08 · 18h',    premioCampeao:'R$ 600,00', premioVice:'R$ 200,00', ativo:true, ordem:0},
+    seed_mascab:   {nome:'Masculino A/B',  horario:'Sex 14/08 · 19h30',  premioCampeao:'R$ 600,00', premioVice:'R$ 200,00', ativo:true, ordem:1},
+    seed_femc:     {nome:'Feminino C',     horario:'Sáb 15/08 · 8h',     premioCampeao:'R$ 500,00', premioVice:'R$ 150,00', ativo:true, ordem:2},
+    seed_mascc:    {nome:'Masculino C',    horario:'Sáb 15/08 · 10h30',  premioCampeao:'R$ 500,00', premioVice:'R$ 150,00', ativo:true, ordem:3},
+    seed_mascde:   {nome:'Masculino D/E',  horario:'Sáb 15/08 · 14h',    premioCampeao:'R$ 400,00', premioVice:'R$ 100,00', ativo:true, ordem:4},
+    seed_femde:    {nome:'Feminino D/E',   horario:'Sáb 15/08 · 17h',    premioCampeao:'R$ 400,00', premioVice:'R$ 100,00', ativo:true, ordem:5},
+    seed_mistade:  {nome:'Mista D/E',      horario:'Dom 16/08 · 8h',     premioCampeao:'R$ 250,00', premioVice:'Voucher R$ 200,00 BOUSSOLÉ para a dupla', ativo:true, ordem:6},
+    seed_mistaopen:{nome:'Mista Open',     horario:'Dom 16/08 · 10h30',  premioCampeao:'R$ 300,00', premioVice:'Voucher R$ 200,00 ZUA para a dupla', ativo:true, ordem:7}
   };
 
   // Preços de inscrição por jogador(a) + chave PIX pra pagamento.
