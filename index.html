@@ -856,6 +856,16 @@ function renderConfiguracoes(c){
   c.innerHTML = `
     <h2 class="titulo-secao">⚙️ Configurações</h2>
 
+    <div class="form-card" style="border-color:var(--gold)">
+      <div style="font-weight:700;margin-bottom:6px">🌱 Popular dados iniciais reais do Torneio OPEN</div>
+      <div class="sub-secao" style="margin-bottom:12px">
+        Aplica de uma vez: time (professores + comercial, cada um com PIN), tiers de patrocínio (Master/Ouro/Prata/Bronze — valores reais do mídia kit) e o checklist já andado no Trello.
+        <b>Categorias do torneio entram com valor R$ 0,00</b> — ainda faltam os preços de inscrição por categoria, ajuste depois em "Categorias do torneio" abaixo.
+        Pode rodar mais de uma vez sem duplicar (atualiza os mesmos registros).
+      </div>
+      <button class="btn" onclick="seedDadosIniciais()">🌱 Aplicar dados iniciais</button>
+    </div>
+
     <div class="field-group" style="max-width:280px;margin-bottom:1.5rem">
       <label>Comissão global (%)</label>
       <input type="number" id="cfgComissao" value="${S.config.comissaoPercentual}" min="0" max="100" step="0.5" onchange="salvarComissaoGlobal()">
@@ -989,6 +999,78 @@ function salvarUsuario(){
     REF.usuarios.push(dados);
   }
   fecharModal('modalUsuario');
+}
+
+/* ═══════════════════════ SEED — DADOS INICIAIS REAIS ═══════════════════════
+   Time, tiers de patrocínio (mídia kit) e checklist (Trello) já confirmados
+   pelo Gustavo em 05/08/2026. Categorias entram com valor 0 — preço por
+   categoria ainda não foi definido. Chaves fixas (seed_*) tornam a operação
+   idempotente: rodar de novo só atualiza os mesmos registros, não duplica.
+   ═══════════════════════════════════════════════════════════════════════ */
+function seedDadosIniciais(){
+  if(!confirm('Isso vai criar/atualizar: time (10 pessoas com PIN), tiers de patrocínio (valores reais) e checklist (itens reais do Trello). Categorias entram com valor R$ 0,00 — precisa ajustar depois. Continuar?')) return;
+
+  const usuarios = {
+    seed_gustavo:        {nome:'Gustavo Hoewell', cargo:'CEO',        pin:'4300', isAdmin:true,  isFinanceiro:true,  ativo:true},
+    seed_benedito:       {nome:'Benedito',         cargo:'Financeiro', pin:'4301', isAdmin:false, isFinanceiro:true,  ativo:true},
+    seed_gabriel:        {nome:'Gabriel',          cargo:'Professor',  pin:'1001', isAdmin:false, isFinanceiro:false, ativo:true},
+    seed_vinicius:       {nome:'Vinicius',         cargo:'Professor',  pin:'1002', isAdmin:false, isFinanceiro:false, ativo:true},
+    seed_roberto:        {nome:'Roberto',          cargo:'Professor',  pin:'1003', isAdmin:false, isFinanceiro:false, ativo:true},
+    seed_victorhugo:     {nome:'Victor Hugo',      cargo:'Professor',  pin:'1004', isAdmin:false, isFinanceiro:false, ativo:true},
+    seed_ricardocarioca: {nome:'Ricardo Carioca',  cargo:'Professor',  pin:'1005', isAdmin:false, isFinanceiro:false, ativo:true},
+    seed_emilly:         {nome:'Emilly',           cargo:'Comercial',  pin:'2001', isAdmin:false, isFinanceiro:false, ativo:true},
+    seed_julia:          {nome:'Julia',            cargo:'Comercial',  pin:'2002', isAdmin:false, isFinanceiro:false, ativo:true},
+    seed_luana:          {nome:'Luana',            cargo:'Comercial',  pin:'2003', isAdmin:false, isFinanceiro:false, ativo:true}
+  };
+
+  const tiers = {
+    seed_master: {nome:'Master', valor:2000, ativo:true, ordem:0},
+    seed_ouro:   {nome:'Ouro',   valor:1000, ativo:true, ordem:1},
+    seed_prata:  {nome:'Prata',  valor:700,  ativo:true, ordem:2},
+    seed_bronze: {nome:'Bronze', valor:400,  ativo:true, ordem:3}
+  };
+
+  // Categorias da programação prévia (14-16/08) — valor ainda não definido pelo Gustavo.
+  const categorias = {
+    seed_femab:    {nome:'Feminino A/B',   valor:0, ativo:true, ordem:0},
+    seed_mascab:   {nome:'Masculino A/B',  valor:0, ativo:true, ordem:1},
+    seed_femc:     {nome:'Feminino C',     valor:0, ativo:true, ordem:2},
+    seed_mascc:    {nome:'Masculino C',    valor:0, ativo:true, ordem:3},
+    seed_mascde:   {nome:'Masculino D/E',  valor:0, ativo:true, ordem:4},
+    seed_femde:    {nome:'Feminino D/E',   valor:0, ativo:true, ordem:5},
+    seed_mistade:  {nome:'Mista D/E',      valor:0, ativo:true, ordem:6},
+    seed_mistaopen:{nome:'Mista Open',     valor:0, ativo:true, ordem:7}
+  };
+
+  // Checklist real (migrado do quadro Trello em 05/08/2026), reorganizado nos grupos do app.
+  const agora = Date.now();
+  const tarefas = {
+    seed_t1:  {desc:'Video maker/fotógrafo',                          grupo:'Marketing & Comunicação',      status:'a-fazer',      ordem:0, criadoPor:'seed', criadoEm:agora},
+    seed_t2:  {desc:'Divulgar lista categorias/grupos pros alunos',    grupo:'Marketing & Comunicação',      status:'a-fazer',      ordem:1, criadoPor:'seed', criadoEm:agora},
+    seed_t3:  {desc:'Mkt: divulgar grupo do torneio no Instagram e grupos', grupo:'Marketing & Comunicação', status:'em-andamento', ordem:2, criadoPor:'seed', criadoEm:agora},
+    seed_t4:  {desc:'Cartaz do torneio interno',                       grupo:'Marketing & Comunicação',      status:'concluida',    ordem:3, criadoPor:'seed', criadoEm:agora},
+    seed_t5:  {desc:'Colar cartaz físico na unidade',                  grupo:'Marketing & Comunicação',      status:'concluida',    ordem:4, criadoPor:'seed', criadoEm:agora},
+    seed_t6:  {desc:'Grupo do torneio (WhatsApp)',                     grupo:'Marketing & Comunicação',      status:'concluida',    ordem:5, criadoPor:'seed', criadoEm:agora},
+    seed_t7:  {desc:'Troféu',                                         grupo:'Estrutura & Logística',        status:'em-andamento', ordem:0, criadoPor:'seed', criadoEm:agora},
+    seed_t8:  {desc:'BackDrop',                                       grupo:'Estrutura & Logística',        status:'em-andamento', ordem:1, criadoPor:'seed', criadoEm:agora},
+    seed_t9:  {desc:'Cantor',                                         grupo:'Estrutura & Logística',        status:'concluida',    ordem:2, criadoPor:'seed', criadoEm:agora},
+    seed_t10: {desc:'Sistema de som',                                 grupo:'Estrutura & Logística',        status:'concluida',    ordem:3, criadoPor:'seed', criadoEm:agora},
+    seed_t11: {desc:'Acompanhar total de inscritos (288 até agora)',  grupo:'Comercial & Patrocínio',       status:'em-andamento', ordem:0, criadoPor:'seed', criadoEm:agora},
+    seed_t12: {desc:'Fichas de inscrição do torneio interno',         grupo:'Operação nos Dias do Evento',  status:'em-andamento', ordem:0, criadoPor:'seed', criadoEm:agora},
+    seed_t13: {desc:'Fichas dos professores',                         grupo:'Operação nos Dias do Evento',  status:'concluida',    ordem:1, criadoPor:'seed', criadoEm:agora}
+  };
+
+  Promise.all([
+    REF.usuarios.update(usuarios),
+    REF.tiers.update(tiers),
+    REF.categorias.update(categorias),
+    REF.tarefas.update(tarefas)
+  ]).then(()=>{
+    toast('Dados iniciais aplicados! Falta só ajustar o valor das categorias.');
+  }).catch(err=>{
+    console.error(err);
+    toast('Erro ao aplicar — confira se o Firebase já está configurado.');
+  });
 }
 
 /* ═══════════════════════ INIT ═══════════════════════ */
