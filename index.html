@@ -294,18 +294,17 @@
 <script>
 /* ═══════════════════════════════════════════════════════════
    CONFIGURAÇÃO FIREBASE
-   TODO: substituir pelos valores reais do projeto
-   "point-43-torneio-open" criado no Firebase Console.
-   Até lá o app carrega mas não lê/grava dados reais.
+   Projeto real "point43-eventos" (Firebase Console), configurado em 05/08/2026.
    ═══════════════════════════════════════════════════════════ */
 const FIREBASE_CONFIG = {
-  apiKey: "COLOQUE_AQUI",
-  authDomain: "point-43-torneio-open.firebaseapp.com",
-  databaseURL: "https://point-43-torneio-open-default-rtdb.firebaseio.com",
-  projectId: "point-43-torneio-open",
-  storageBucket: "point-43-torneio-open.appspot.com",
-  messagingSenderId: "COLOQUE_AQUI",
-  appId: "COLOQUE_AQUI"
+  apiKey: "AIzaSyCEtCxpUjwRPTPcCuNqoJabXTB6DbYDsac",
+  authDomain: "point43-eventos.firebaseapp.com",
+  databaseURL: "https://point43-eventos-default-rtdb.firebaseio.com",
+  projectId: "point43-eventos",
+  storageBucket: "point43-eventos.firebasestorage.app",
+  messagingSenderId: "168931738132",
+  appId: "1:168931738132:web:8d0b10c7c9d763ba91dd01",
+  measurementId: "G-M8D50YZBV7"
 };
 
 let db = null;
@@ -366,7 +365,7 @@ function renderSelecao(){
   const grid = document.getElementById('gridUsuarios');
   const usuarios = listaAtivos(S.usuarios);
   if(!db){
-    grid.innerHTML = `<div class="selecao-vazio">⚠️ Firebase ainda não configurado neste arquivo (FIREBASE_CONFIG). Peça pro Gustavo criar o projeto "point-43-torneio-open" e colar as chaves no topo do &lt;script&gt;.</div>`;
+    grid.innerHTML = `<div class="selecao-vazio">⚠️ Firebase ainda não configurado neste arquivo (FIREBASE_CONFIG).</div>`;
     return;
   }
   if(usuarios.length===0){
