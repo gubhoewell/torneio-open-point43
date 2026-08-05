@@ -1008,10 +1008,11 @@ function salvarUsuario(){
    idempotente: rodar de novo só atualiza os mesmos registros, não duplica.
    ═══════════════════════════════════════════════════════════════════════ */
 function seedDadosIniciais(){
-  if(!confirm('Isso vai criar/atualizar: time (10 pessoas com PIN), tiers de patrocínio (valores reais) e checklist (itens reais do Trello). Categorias entram com valor R$ 0,00 — precisa ajustar depois. Continuar?')) return;
+  if(!confirm('Isso vai criar/atualizar: time (11 pessoas com PIN), tiers de patrocínio (valores reais) e checklist (itens reais do Trello). Categorias entram com valor R$ 0,00 — precisa ajustar depois. Continuar?')) return;
 
   const usuarios = {
     seed_gustavo:        {nome:'Gustavo Hoewell', cargo:'CEO',        pin:'4300', isAdmin:true,  isFinanceiro:true,  ativo:true},
+    seed_mateus:         {nome:'Mateus',           cargo:'COO',        pin:'4302', isAdmin:true,  isFinanceiro:true,  ativo:true},
     seed_benedito:       {nome:'Benedito',         cargo:'Financeiro', pin:'4301', isAdmin:false, isFinanceiro:true,  ativo:true},
     seed_gabriel:        {nome:'Gabriel',          cargo:'Professor',  pin:'1001', isAdmin:false, isFinanceiro:false, ativo:true},
     seed_vinicius:       {nome:'Vinicius',         cargo:'Professor',  pin:'1002', isAdmin:false, isFinanceiro:false, ativo:true},
