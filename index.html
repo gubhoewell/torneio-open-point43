@@ -13,7 +13,7 @@
     --blue:#7777cc; --bluesoft:#1e1e2a; --orange:#e2874a; --orangesoft:#2a1e10;
     --r:16px; --rs:10px;
   }
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:16px;-webkit-tap-highlight-color:transparent}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:17px;-webkit-tap-highlight-color:transparent}
   button,input,select,textarea{font-family:inherit;font-size:inherit}
   ::-webkit-scrollbar{width:8px;height:8px}
   ::-webkit-scrollbar-thumb{background:#333;border-radius:4px}
@@ -23,8 +23,8 @@
   #tela-publica{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;min-height:100vh;padding:2.5rem 1.25rem}
   .publica-sucesso{background:var(--greensoft);border:1px solid var(--green);border-radius:var(--r);padding:1.5rem;text-align:center;color:var(--text)}
   .publica-sucesso .grande{font-size:32px;margin-bottom:8px}
-  .logo{font-size:13px;letter-spacing:.15em;color:var(--gold);font-weight:700;margin-bottom:6px;text-align:center}
-  .logo-titulo{font-size:22px;font-weight:800;color:#fff;margin-bottom:2rem;text-align:center}
+  .logo{font-size:14px;letter-spacing:.15em;color:var(--gold);font-weight:700;margin-bottom:6px;text-align:center}
+  .logo-titulo{font-size:26px;font-weight:800;color:#fff;margin-bottom:2rem;text-align:center}
   .grid-usuarios{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;max-width:640px;width:100%}
   .btn-usuario{background:var(--card);border:1px solid var(--border);border-radius:var(--rs);padding:1.1rem .8rem;cursor:pointer;transition:.15s;text-align:center;color:var(--text)}
   .btn-usuario:hover,.btn-usuario:active{border-color:var(--gold);background:#1f1c14}
@@ -70,12 +70,12 @@
   .tab.ativo{color:var(--gold);border-bottom-color:var(--gold);background:#1c1908}
   .badge-notif{background:var(--red);color:#fff;font-size:11px;font-weight:800;padding:1px 6px;border-radius:10px;margin-left:2px}
 
-  .conteudo{padding:1.25rem 1rem 3rem;max-width:920px;margin:0 auto}
-  h2.titulo-secao{font-size:19px;font-weight:800;margin-bottom:1rem;display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap}
-  .sub-secao{font-size:13px;color:var(--muted2);margin:-8px 0 16px}
+  .conteudo{padding:1.5rem 1.25rem 3rem;max-width:1020px;margin:0 auto}
+  h2.titulo-secao{font-size:22px;font-weight:800;margin-bottom:1rem;display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap}
+  .sub-secao{font-size:14px;color:var(--muted2);margin:-8px 0 16px}
 
   /* ── BOTÕES GENÉRICOS ── */
-  .btn{background:var(--gold);color:#000;border:none;padding:11px 18px;border-radius:8px;font-size:14.5px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+  .btn{background:var(--gold);color:#000;border:none;padding:13px 20px;border-radius:8px;font-size:16px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
   .btn:hover{background:#d4b05e}
   .btn:disabled{opacity:.4;cursor:not-allowed}
   .btn-outline{background:none;border:1px solid var(--border);color:var(--text);padding:10px 16px;border-radius:8px;font-size:14px;cursor:pointer}
@@ -96,12 +96,12 @@
   .card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1.1rem}
   .form-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1.25rem;margin-bottom:1.25rem}
   .field-group{margin-bottom:14px}
-  .field-group label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:6px;font-weight:600}
-  .field-group input,.field-group select,.field-group textarea{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:11px 12px;font-size:15px}
+  .field-group label{display:block;font-size:13.5px;color:var(--muted);margin-bottom:6px;font-weight:600}
+  .field-group input,.field-group select,.field-group textarea{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:13px 14px;font-size:16px}
   .field-group input:focus,.field-group select:focus,.field-group textarea:focus{outline:none;border-color:var(--gold)}
   .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   @media(max-width:520px){.field-row{grid-template-columns:1fr}}
-  .valor-preview{background:var(--goldsoft);border:1px dashed var(--gold);border-radius:8px;padding:10px 12px;font-size:14px;color:var(--gold);font-weight:700;margin-bottom:14px}
+  .valor-preview{background:var(--goldsoft);border:1px dashed var(--gold);border-radius:8px;padding:12px 14px;font-size:15.5px;color:var(--gold);font-weight:700;margin-bottom:14px}
 
   /* ── METRIC CARDS ── */
   .metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:1.5rem}
@@ -119,9 +119,9 @@
   .venda-card.confirmado{border-left:3px solid var(--green)}
   .venda-card.cancelado{border-left:3px solid var(--red);opacity:.5}
   .venda-corpo{flex:1;min-width:0}
-  .venda-titulo{font-size:14.5px;font-weight:600;margin-bottom:3px}
+  .venda-titulo{font-size:15.5px;font-weight:600;margin-bottom:3px}
   .venda-meta{font-size:12.5px;color:var(--muted2);display:flex;gap:8px;flex-wrap:wrap}
-  .venda-valor{font-size:16px;font-weight:800;color:var(--gold);white-space:nowrap}
+  .venda-valor{font-size:17px;font-weight:800;color:var(--gold);white-space:nowrap}
   .status-badge{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:700;white-space:nowrap}
   .status-badge.pendente{background:var(--orangesoft);color:var(--orange)}
   .status-badge.confirmado{background:var(--greensoft);color:var(--green)}
@@ -200,7 +200,7 @@
 <div id="tela-publica" style="display:none">
   <div class="logo">POINT 43</div>
   <div class="logo-titulo">🎾 Inscreva sua dupla — Torneio OPEN</div>
-  <div id="publicaConteudo" style="max-width:480px;width:100%"></div>
+  <div id="publicaConteudo" style="max-width:640px;width:100%"></div>
 </div>
 
 <!-- PIN MODAL -->
