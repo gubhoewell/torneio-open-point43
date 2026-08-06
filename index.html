@@ -412,10 +412,11 @@ function validarCpf(cpf){
 }
 function aplicarMascaraCpf(input){ input.value = formatCpf(input.value); }
 
-/* ═══════════════════════ PREÇO POR JOGADOR (1ª/2ª inscrição) ═══════════════════════
-   Cada jogador(a) paga R$ preçoPrimeiraInscricao na 1ª categoria em que se inscreve
-   e R$ precoSegundaInscricao na 2ª — máximo 2 categorias por pessoa. Preço não é mais
-   por categoria: é calculado contando, pelo CPF (identificador único e confiável — nome
+/* ═══════════════════════ PREÇO POR JOGADOR (1ª inscrição + demais) ═══════════════════════
+   Cada jogador(a) paga R$ precoPrimeiraInscricao na 1ª categoria em que se inscreve e
+   R$ precoSegundaInscricao em TODAS as categorias seguintes — sem limite de quantas
+   categorias a pessoa pode jogar. Preço não é mais por categoria: é calculado contando,
+   pelo CPF (identificador único e confiável — nome
    sozinho é frágil, duas pessoas homônimas ou grafias diferentes quebrariam a contagem),
    em quantas categorias esse jogador já reivindica:
      1) `inscricoes` com status != cancelado (registro oficial — lançado por vendedor
@@ -444,11 +445,10 @@ function categoriasAtivasDoJogador(cpf, opts){
   });
   return cats;
 }
-// Retorna {valor, ordem:1|2} ou null se o jogador já estiver nessa categoria ou já tiver atingido o limite de 2.
+// Retorna {valor, ordem} ou null se o jogador já estiver inscrito nessa categoria específica.
 function precoProximaInscricao(cpf, categoriaId, opts){
   const cats = categoriasAtivasDoJogador(cpf, opts);
   if(cats.has(categoriaId)) return null;
-  if(cats.size >= 2) return null;
   const ordem = cats.size + 1;
   const valor = ordem===1 ? Number(S.config.precoPrimeiraInscricao ?? 75) : Number(S.config.precoSegundaInscricao ?? 35);
   return {valor, ordem};
@@ -495,7 +495,7 @@ function renderTelaPublica(){
       </div>
       <div class="field-group"><label>WhatsApp Jogador(a) 2</label><input id="pubWhats2" placeholder="(43) 9....." inputmode="tel"></div>
       <div class="valor-preview" id="pubPreview">Preencha os dados pra ver o valor da inscrição</div>
-      <div class="sub-secao" style="margin-top:-4px">Sua inscrição fica em análise até nossa equipe confirmar — você recebe retorno pelo WhatsApp. O CPF é usado só pra identificar sua 1ª e 2ª inscrição (máximo 2 categorias por pessoa) e não é compartilhado.</div>
+      <div class="sub-secao" style="margin-top:-4px">Sua inscrição fica em análise até nossa equipe confirmar — você recebe retorno pelo WhatsApp. O CPF é usado só pra identificar sua 1ª inscrição (mais cara) das demais (mais baratas) e não é compartilhado.</div>
       <button class="btn" style="width:100%;justify-content:center;margin-top:6px" onclick="salvarInscricaoPublica()">✅ Enviar inscrição</button>
       `}
     </div>
@@ -527,7 +527,7 @@ function atualizarPreviewPublica(){
     if(normalizarCpf(cpf).length!==11) return `${esc(nome)}: falta o CPF`;
     if(!validarCpf(cpf)){ erro = `⚠️ CPF de ${esc(nome)} parece inválido — confira os números.`; return ''; }
     const r = precoProximaInscricao(cpf, catId);
-    if(!r){ erro = `⚠️ ${esc(nome)} já está inscrito(a) nessa categoria ou já atingiu o limite de 2 categorias.`; return ''; }
+    if(!r){ erro = `⚠️ ${esc(nome)} já está inscrito(a) nessa categoria.`; return ''; }
     total += r.valor;
     return `${esc(nome)}: ${r.ordem}ª inscrição — ${fmt(r.valor)}`;
   });
@@ -548,9 +548,9 @@ function salvarInscricaoPublica(){
   if(!validarCpf(c1)) return toast(`CPF de ${j1} inválido — confira os números.`);
   if(!validarCpf(c2)) return toast(`CPF de ${j2} inválido — confira os números.`);
   const p1 = precoProximaInscricao(c1, catId);
-  if(!p1) return toast(`${j1} já está inscrito(a) nessa categoria ou já atingiu o limite de 2 categorias.`);
+  if(!p1) return toast(`${j1} já está inscrito(a) nessa categoria.`);
   const p2 = precoProximaInscricao(c2, catId);
-  if(!p2) return toast(`${j2} já está inscrito(a) nessa categoria ou já atingiu o limite de 2 categorias.`);
+  if(!p2) return toast(`${j2} já está inscrito(a) nessa categoria.`);
   const valorTotal = p1.valor + p2.valor;
   REF.inscricoesPublicas.push({
     categoriaId: catId, categoriaNome: cat.nome, valor: valorTotal,
@@ -798,7 +798,7 @@ function atualizarPreviewVenda(){
       if(normalizarCpf(cpf).length!==11) return `${esc(nome)}: falta o CPF`;
       if(!validarCpf(cpf)){ erro = `⚠️ CPF de ${esc(nome)} parece inválido — confira os números.`; return ''; }
       const r = precoProximaInscricao(cpf, catId);
-      if(!r){ erro = `⚠️ ${esc(nome)} já está inscrito(a) nessa categoria ou já atingiu o limite de 2 categorias.`; return ''; }
+      if(!r){ erro = `⚠️ ${esc(nome)} já está inscrito(a) nessa categoria.`; return ''; }
       total += r.valor;
       return `${esc(nome)}: ${r.ordem}ª inscrição — ${fmt(r.valor)}`;
     });
@@ -823,9 +823,9 @@ function salvarInscricao(){
   if(!validarCpf(c1)) return toast(`CPF de ${j1} inválido — confira os números.`);
   if(!validarCpf(c2)) return toast(`CPF de ${j2} inválido — confira os números.`);
   const p1 = precoProximaInscricao(c1, catId);
-  if(!p1) return toast(`${j1} já está inscrito(a) nessa categoria ou já atingiu o limite de 2 categorias.`);
+  if(!p1) return toast(`${j1} já está inscrito(a) nessa categoria.`);
   const p2 = precoProximaInscricao(c2, catId);
-  if(!p2) return toast(`${j2} já está inscrito(a) nessa categoria ou já atingiu o limite de 2 categorias.`);
+  if(!p2) return toast(`${j2} já está inscrito(a) nessa categoria.`);
   const valorTotal = p1.valor + p2.valor;
   const u = usuarioAtualObj();
   REF.inscricoes.push({
@@ -1098,9 +1098,9 @@ function aprovarInscricaoPublica(id){
   // se o(a) jogador(a) já foi aprovado(a) noutra categoria nesse meio-tempo.
   const opts = {excluirPublicaId: id}; // exclui o próprio pedido, senão ele "se vê" ocupando a categoria e a aprovação falha sempre
   const p1 = precoProximaInscricao(p.cpf1, p.categoriaId, opts);
-  if(!p1) return toast(`${p.jogador1} já está inscrito(a) nessa categoria ou já atingiu o limite de 2 categorias — rejeite este pedido.`);
+  if(!p1) return toast(`${p.jogador1} já está inscrito(a) nessa categoria — rejeite este pedido.`);
   const p2 = precoProximaInscricao(p.cpf2, p.categoriaId, opts);
-  if(!p2) return toast(`${p.jogador2} já está inscrito(a) nessa categoria ou já atingiu o limite de 2 categorias — rejeite este pedido.`);
+  if(!p2) return toast(`${p.jogador2} já está inscrito(a) nessa categoria — rejeite este pedido.`);
   const valorTotal = p1.valor + p2.valor;
   // cria a inscrição de verdade, sem vendedor (veio direto do site) — segue o fluxo normal de pagamento pendente
   REF.inscricoes.push({
@@ -1228,14 +1228,14 @@ function renderConfiguracoes(c){
     </div>
 
     <h3 style="font-size:15px;margin-bottom:10px;color:var(--muted)">Preços de inscrição (por jogador)</h3>
-    <div class="sub-secao">Cada jogador(a) paga o valor da 1ª inscrição na sua 1ª categoria e o valor da 2ª na 2ª — máximo 2 categorias por pessoa, identificado pelo <b>CPF</b> (não pelo nome, pra evitar erro de digitação/homônimo). O total de uma dupla é a soma dos dois valores individuais.</div>
+    <div class="sub-secao">Cada jogador(a) paga o valor da 1ª inscrição na 1ª categoria em que joga, e o valor da 2ª em <b>todas</b> as categorias seguintes — sem limite de quantas categorias a pessoa pode jogar. Identificado pelo <b>CPF</b> (não pelo nome, pra evitar erro de digitação/homônimo). O total de uma dupla é a soma dos dois valores individuais.</div>
     <div class="field-row" style="max-width:400px;margin-bottom:1.5rem">
       <div class="field-group">
         <label>1ª inscrição (R$)</label>
         <input type="number" id="cfgPreco1" value="${S.config.precoPrimeiraInscricao}" min="0" step="0.01" onchange="salvarPrecosInscricao()">
       </div>
       <div class="field-group">
-        <label>2ª inscrição (R$)</label>
+        <label>2ª em diante (R$)</label>
         <input type="number" id="cfgPreco2" value="${S.config.precoSegundaInscricao}" min="0" step="0.01" onchange="salvarPrecosInscricao()">
       </div>
     </div>
