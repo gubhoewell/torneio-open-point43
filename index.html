@@ -181,9 +181,21 @@
   .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--card2);border:1px solid var(--gold);color:var(--text);padding:12px 20px;border-radius:10px;font-size:14px;font-weight:600;z-index:1000;display:none;box-shadow:0 4px 20px rgba(0,0,0,.4)}
   .toast.show{display:block}
 
+  .wrap-publica{max-width:640px;width:100%}
+
   @media(max-width:600px){
     .conteudo{padding:1rem .75rem 3rem}
     .venda-card{flex-wrap:wrap}
+  }
+
+  /* ── TELAS LARGAS (desktop) — só aumenta espaço útil, não mexe no mobile ── */
+  @media(min-width:1000px){
+    .conteudo{max-width:1240px}
+    .wrap-publica{max-width:780px}
+    body{font-size:18px}
+    .form-card{padding:1.75rem}
+    h2.titulo-secao{font-size:25px}
+    .logo-titulo{font-size:30px}
   }
 </style>
 </head>
@@ -200,7 +212,7 @@
 <div id="tela-publica" style="display:none">
   <div class="logo">POINT 43</div>
   <div class="logo-titulo">🎾 Inscreva sua dupla — Torneio OPEN</div>
-  <div id="publicaConteudo" style="max-width:640px;width:100%"></div>
+  <div id="publicaConteudo" class="wrap-publica"></div>
 </div>
 
 <!-- PIN MODAL -->
